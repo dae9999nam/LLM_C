@@ -8,6 +8,6 @@
 
 #### Obejective
 
-    * To have hands-on practice in designing and developing a chatbot program, which involves the creation, management and coordination of processes.
+    To have hands-on practice in designing and developing a chatbot program, which involves the creation, management and coordination of processes.
 
 ### Multi-Threading
