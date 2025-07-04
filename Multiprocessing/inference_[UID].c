@@ -112,22 +112,25 @@ int main(int argc, char *argv[]) {
 
     // parse command-line parameters via argv, you'll need to change this to read stdin
     // Your Code Starts Here
+    // convert the following if statement to read stdin
     if (argc >= 3) {
         rng_seed = atoi(argv[1]);
         num_prompt = (argc - 2) < 4 ? (argc - 2) : 4;
         for (int i = 0; i < num_prompt; i++) {
             prompts[i] = argv[i + 2];
         }
-    } else {
+    }
+    else {/*
         fprintf(stderr, "Usage:   ./inference <seed> <prompt1> <prompt2>\n");
         fprintf(stderr, "Example: ./inference 42 \"What is Fibonacci Number?\" \"Can you give me a python program to generate Fibonacci Number?\"\n");
         fprintf(stderr, "Note:    <prompt> must be quoted with \"\", at most 4 prompt is supported \n");
-        exit(EXIT_FAILURE);
-        /* target interface
+        exit(EXIT_FAILURE);*/
+        
+        // target interface
         fprintf(stderr, "Usage: ./inference <seed>\n");
         fprintf(stderr, "Note:  this shall not be called directly, use ./entry <seed> \n");
         exit(EXIT_FAILURE);
-         */
+         
     }
     // Your Code Ends Here
 

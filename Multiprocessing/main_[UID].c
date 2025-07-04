@@ -42,5 +42,11 @@ int main(int argc, char *argv[]) {
     // Write your main logic here
     
 
+    // use fork to create child process 
+
+    // in the main process, accept user input
+
+    // use exec to run inference_[UID].c
+
     return EXIT_SUCCESS;
 }
