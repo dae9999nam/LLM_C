@@ -38,15 +38,23 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Note:  default seed is 42\n");
         exit(1);
     }
+    // option 1: main program = parent process & inference = child process
+    // option 2: inference = parent process & main program = child process
 
     // Write your main logic here
+    pid_t process;
+    // use fork to create child process 
+    process = fork();
+    if (process == 0){ // use exec to run inference_[UID].c for child process 
+        if (execlp("inference", "./inference", seed) == -1){
+            fprintf(stderr, "execlp: error no = %s\n", strerror(errno));
+        }
+    } else { // in the main process, accept user input
+        String prompt = scanf();
+        // pass the prompt to the pipeline to the child process.
+    }
     
 
-    // use fork to create child process 
-
-    // in the main process, accept user input
-
-    // use exec to run inference_[UID].c
-
+    
     return EXIT_SUCCESS;
 }

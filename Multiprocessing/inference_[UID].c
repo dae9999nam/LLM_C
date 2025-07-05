@@ -113,6 +113,7 @@ int main(int argc, char *argv[]) {
     // parse command-line parameters via argv, you'll need to change this to read stdin
     // Your Code Starts Here
     // convert the following if statement to read stdin
+    
     if (argc >= 3) {
         rng_seed = atoi(argv[1]);
         num_prompt = (argc - 2) < 4 ? (argc - 2) : 4;
