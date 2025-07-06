@@ -36,6 +36,16 @@ Sampler sampler;         // sampler instance to be init
 // Define Additional Global Variables and Signal Handlers Here
 // Your Code Starts Here
 #include <signal.h>   // for handler and kill
+// global variable
+int n = 0;
+// Signal handler that make the inference process sleep until the stdin in obtained
+ void sigint_handler(int signum){
+    while (1){ // condition should be modified here
+        sleep(1);
+    }
+    exit(0);
+ }
+// when inference is ready, then send signal to main process so that  
 
 // Your Code Ends Here
 
@@ -112,6 +122,12 @@ int main(int argc, char *argv[]) {
 
     // parse command-line parameters via argv, you'll need to change this to read stdin
     // Your Code Starts Here
+    // sigaction to install a signal handler
+    struct sigaction sa;
+    sigaction(SIGINT, NULL, &sa);
+    sa.sa_handler = sigint_handler;
+    sigaction(SIGINT, &sa, NULL);
+
     // convert the following if statement to read stdin
     
     if (argc >= 3) {
