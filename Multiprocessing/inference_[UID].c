@@ -37,13 +37,18 @@ Sampler sampler;         // sampler instance to be init
 // Your Code Starts Here
 #include <signal.h>   // for handler and kill
 // global variable
-int n = 0;
+int got_signal = 0;
+// 
 // Signal handler that make the inference process sleep until the stdin in obtained
- void sigint_handler(int signum){
-    while (1){ // condition should be modified here
-        sleep(1);
-    }
-    exit(0);
+ void sig_handler(int signum){
+    got_signal = 1;
+ }
+ void setup_handler(int signo){
+    struct sigaction sa;
+    sa.sa_handler = sig_handler; // point to handler
+    sa.sa_flags = 0; // no special flags
+    sigemptyset(&sa.sa_mask); // do not block other signals
+    sigaction(signo, &sa, NULL); // install it
  }
 // when inference is ready, then send signal to main process so that  
 
@@ -123,20 +128,26 @@ int main(int argc, char *argv[]) {
     // parse command-line parameters via argv, you'll need to change this to read stdin
     // Your Code Starts Here
     // sigaction to install a signal handler
-    struct sigaction sa;
-    sigaction(SIGINT, NULL, &sa);
-    sa.sa_handler = sigint_handler;
-    sigaction(SIGINT, &sa, NULL);
-
-    // convert the following if statement to read stdin
+    setup_handler(SIGUSR1);
+    while(!got_signal){ // wait until the parent process send SIGUSR1 signal 
+        pause();
+    }
     
+    // convert the following if statement to read stdin
+    if (argc >= 2){
+        rng_seed = atoi(argv[1]);
+        printf('>>> ');
+        while (fget(prompts[num_prompt], MAX_PROMPT_LEN, stdin)){} // accept stdin from main process
+        num_prompt++;
+    }
+    /*
     if (argc >= 3) {
         rng_seed = atoi(argv[1]);
         num_prompt = (argc - 2) < 4 ? (argc - 2) : 4;
         for (int i = 0; i < num_prompt; i++) {
             prompts[i] = argv[i + 2];
         }
-    }
+    }*/
     else {/*
         fprintf(stderr, "Usage:   ./inference <seed> <prompt1> <prompt2>\n");
         fprintf(stderr, "Example: ./inference 42 \"What is Fibonacci Number?\" \"Can you give me a python program to generate Fibonacci Number?\"\n");
@@ -162,10 +173,14 @@ int main(int argc, char *argv[]) {
 
     // Generation Loop, update to match requirements
     // Your code starts here
+    
+    /*
     for (int i = 0; i < num_prompt; i++) {
         printf("user\n %s \n", prompts[i]);
         generate(prompts[i]);   
-    }
+    }*/
+    generate(prompts[num_prompt]);
+    kill(getppid(), SIGUSR2); //tell main process that prompt is ready
     // Your code ends here
     
     // memory and file handles cleanup
