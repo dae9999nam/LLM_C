@@ -1,10 +1,7 @@
 /*
-* PLEASE WRITE DOWN FOLLOWING INFO BEFORE SUBMISSION
 * FILE NAME: 
-* NAME: 
-* UID:  
-* Development Platform: 
-* Remark: (How much you implemented?)
+* NAME: BAEK SEUNGHEYON
+* Development Platform: Visual Studio Code & Docker
 * How to compile separately: (gcc -o main main_[UID].c)
 */
 
@@ -52,6 +49,7 @@ int main(int argc, char *argv[]) {
     int pfd[2]; // pipe file descriptor
     pipe(pfd);
     // install signal handlers here
+    // Need to always check the return from sigaction() // if (sigaction(SIGUSR2, &sa, NULL) < 0) perror("sigaction SIGUSR2 error")
     struct sigaction sa = {0};
     sa.sa_handler = sigusr2_handler;
     sigaction(SIGUSR2, &sa, NULL);
@@ -63,7 +61,7 @@ int main(int argc, char *argv[]) {
     sigemptyset(&mask);
     sigaddset(&mask, SIGUSR2);
     sigaddset(&mask, SIGINT);
-    if (sigprocmask(SIG_BLOCK, &mask, &oldmask)< 0){fprintf(stderr, "Sigprocmask failed error no = %s \n", stderr(errno))}
+    if (sigprocmask(SIG_BLOCK, &mask, &oldmask)< 0){fprintf(stderr, "Sigprocmask failed: %s\n", stderr(errno))}
 
     // use fork to create child process 
     pid = fork();
@@ -72,8 +70,9 @@ int main(int argc, char *argv[]) {
         if (dup2(pfd[READ_END], READ_END) == -1){ // set pipe read end to stdin
             fprintf(stderr, "dup2 failed: %s\n", strerror(errno));} 
         close(pfd[READ_END]); // close the pipe read end
-        if (execlp("inference", "inference", seed) == -1){ // use exec to run inference_[UID].c for child process 
-            fprintf(stderr, "execlp: error no = %s\n", strerror(errno));}
+        if (execlp("inference", "inference", seed, NULL) == -1){ // use exec to run inference_[UID].c for child process 
+            fprintf(stderr, "execlp: error no = %s\n", strerror(errno));
+            exit(1);}
     } 
     // main process: 
     // get user prompt -> pass to inference process
@@ -87,7 +86,7 @@ int main(int argc, char *argv[]) {
             if(!fgets(buf, MAX_PROMPT_LEN, stdin)){break;}
             // pass the prompt to the pipeline to the child process.
             if (write(pfd[WRITE_END], buf, strlen(buf)) == -1){
-                fprintf(stderr, "Main process failed to write on child child process = error no %s\n", stderror(errno))
+                fprintf(stderr, "Main process failed to write on child child process: %s\n", stderror(errno))
             }
             kill(pid, SIGUSR1); // send SIGUSR1 to child process to notice the user prompt is ready
             // while the child process is inferencing
@@ -96,12 +95,10 @@ int main(int argc, char *argv[]) {
         }   
         // close the write end
         close(pfd[WRITE_END]);
-        // restore the original mask if
+        // restore the original mask if you want
         sigprocmask(SIG_SETMASK, &oldmask, NULL);
         wait(NULL); // wait for child process to finish
     }
-    
 
-    
     return EXIT_SUCCESS;
 }
