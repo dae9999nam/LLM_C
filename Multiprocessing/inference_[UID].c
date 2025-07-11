@@ -37,13 +37,15 @@ Sampler sampler;         // sampler instance to be init
 // Your Code Starts Here
 #include <signal.h>   // for handler and kill
 // global variable
-int got_signal = 0;
-// 
+int got_signal = 0; // SIGUSR1 from parent process 
 // Signal handler that make the inference process sleep until the stdin in obtained
  void sig_handler(int signum){
     got_signal = 1;
  }
- void setup_handler(int signo){
+ void setup_handler(int signo){ // 
+    sigset_t mask, oldmask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGUSR1);
     struct sigaction sa;
     sa.sa_handler = sig_handler; // point to handler
     sa.sa_flags = 0; // no special flags
@@ -53,7 +55,6 @@ int got_signal = 0;
 // when inference is ready, then send signal to main process so that  
 
 // Your Code Ends Here
-
 // ----------------------------------------------------------------------------
 // generation loop, don't modify
 
@@ -127,19 +128,10 @@ int main(int argc, char *argv[]) {
 
     // parse command-line parameters via argv, you'll need to change this to read stdin
     // Your Code Starts Here
+    char buf[MAX_PROMPT_LEN];
     // sigaction to install a signal handler
     setup_handler(SIGUSR1);
-    while(!got_signal){ // wait until the parent process send SIGUSR1 signal 
-        pause();
-    }
-    
     // convert the following if statement to read stdin
-    if (argc >= 2){
-        rng_seed = atoi(argv[1]);
-        printf('>>> ');
-        while (fget(prompts[num_prompt], MAX_PROMPT_LEN, stdin)){} // accept stdin from main process
-        num_prompt++;
-    }
     /*
     if (argc >= 3) {
         rng_seed = atoi(argv[1]);
@@ -148,39 +140,53 @@ int main(int argc, char *argv[]) {
             prompts[i] = argv[i + 2];
         }
     }*/
-    else {/*
-        fprintf(stderr, "Usage:   ./inference <seed> <prompt1> <prompt2>\n");
-        fprintf(stderr, "Example: ./inference 42 \"What is Fibonacci Number?\" \"Can you give me a python program to generate Fibonacci Number?\"\n");
-        fprintf(stderr, "Note:    <prompt> must be quoted with \"\", at most 4 prompt is supported \n");
-        exit(EXIT_FAILURE);*/
-        
-        // target interface
-        fprintf(stderr, "Usage: ./inference <seed>\n");
-        fprintf(stderr, "Note:  this shall not be called directly, use ./entry <seed> \n");
-        exit(EXIT_FAILURE);
-         
+    if(argc == 2){
+        rng_seed = atoi(argv[1]);
     }
-    // Your Code Ends Here
-
-    // parameter validation/overrides
-    if (rng_seed <= 0) rng_seed = (unsigned int)time(NULL);
-    // build the Transformer via the model .bin file
-    build_transformer(&transformer, model_path);
-    // build the Tokenizer via the tokenizer .bin file
-    build_tokenizer(&tokenizer, tokenizer_path, transformer.config.vocab_size);
-    // build the Sampler
-    build_sampler(&sampler, transformer.config.vocab_size, temperature, topp, rng_seed);
-
-    // Generation Loop, update to match requirements
-    // Your code starts here
+    else {  /*
+            fprintf(stderr, "Usage:   ./inference <seed> <prompt1> <prompt2>\n");
+            fprintf(stderr, "Example: ./inference 42 \"What is Fibonacci Number?\" \"Can you give me a python program to generate Fibonacci Number?\"\n");
+            fprintf(stderr, "Note:    <prompt> must be quoted with \"\", at most 4 prompt is supported \n");
+            exit(EXIT_FAILURE);
+            */
+            // target interface
+            fprintf(stderr, "Usage: ./inference <seed>\n");
+            fprintf(stderr, "Note:  this shall not be called directly, use ./entry <seed> \n");
+            exit(EXIT_FAILURE);
+        }
     
-    /*
-    for (int i = 0; i < num_prompt; i++) {
-        printf("user\n %s \n", prompts[i]);
-        generate(prompts[i]);   
-    }*/
-    generate(prompts[num_prompt]);
-    kill(getppid(), SIGUSR2); //tell main process that prompt is ready
+    
+    while(1){ // revisit the condition.
+        pause();    // wait until the parent process gets user prompt
+        
+        printf('>>> ');
+        fgets(buf, MAX_PROMPT_LEN, stdin); // accept stdin from main process
+        prompts[num_prompt] = buf;
+        num_prompt++;
+        //after getting user prompt from the main process, reset the 
+        // Your Code Ends Here
+
+        // parameter validation/overrides
+        if (rng_seed <= 0) rng_seed = (unsigned int)time(NULL);
+        // build the Transformer via the model .bin file
+        build_transformer(&transformer, model_path);
+        // build the Tokenizer via the tokenizer .bin file
+        build_tokenizer(&tokenizer, tokenizer_path, transformer.config.vocab_size);
+        // build the Sampler
+        build_sampler(&sampler, transformer.config.vocab_size, temperature, topp, rng_seed);
+
+        // Generation Loop, update to match requirements
+        // Your code starts here
+        
+        /*
+        for (int i = 0; i < num_prompt; i++) {
+            printf("user\n %s \n", prompts[i]);
+            generate(prompts[i]);   
+        }*/
+        generate(prompts[num_prompt]);
+        kill(getppid(), SIGUSR2); //tell main process that it is ready to get next prompt
+    }  
+    // after that we need to go back to the first line of the main program
     // Your code ends here
     
     // memory and file handles cleanup
