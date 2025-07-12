@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     sigemptyset(&mask);
     sigaddset(&mask, SIGUSR2);
     sigaddset(&mask, SIGINT);
-    if (sigprocmask(SIG_BLOCK, &mask, &oldmask)< 0){fprintf(stderr, "Sigprocmask failed: %s\n", stderr(errno))}
+    if (sigprocmask(SIG_BLOCK, &mask, &oldmask)< 0){fprintf(stderr, "Sigprocmask failed: %s\n", strerror(errno));}
 
     // use fork to create child process 
     pid = fork();
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
             if(!fgets(buf, MAX_PROMPT_LEN, stdin)){break;}
             // pass the prompt to the pipeline to the child process.
             if (write(pfd[WRITE_END], buf, strlen(buf)) == -1){
-                fprintf(stderr, "Main process failed to write on child child process: %s\n", stderror(errno))
+                fprintf(stderr, "Main process failed to write on child child process: %s\n", strerror(errno));
             }
             kill(pid, SIGUSR1); // send SIGUSR1 to child process to notice the user prompt is ready
             // while the child process is inferencing
