@@ -159,8 +159,8 @@ int main(int argc, char *argv[]) {
     while(1){ // revisit the condition.
         pause();    // wait until the parent process gets user prompt
         
-        printf("%s", ">>> ");
-        fgets(buf, MAX_PROMPT_LEN, stdin); // accept stdin from main process
+        printf(">>> ");
+        if (fgets(buf, MAX_PROMPT_LEN, stdin) < 0){}  // accept stdin from main process
         prompts[num_prompt] = buf;
         num_prompt++;
         //after getting user prompt from the main process, reset the 

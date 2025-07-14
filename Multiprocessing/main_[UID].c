@@ -92,6 +92,8 @@ int main(int argc, char *argv[]) {
             // while the child process is inferencing
             while(!child_done && !sigint_received) sigsuspend(&oldmask);
             child_done = SYSCALL_FLAG; // reset the flag
+            // Monitoring status of inference process
+            
         }   
         // close the write end
         close(pfd[WRITE_END]);
