@@ -16,6 +16,19 @@
 
 ##### the LLM used is based on SmolLM by HuggingfaceTB.
 
+##### Please download the model and tokenizer to the same folder:
+
+        $ wget -O model.bin https://huggingface.co/huangs0/llama2.c/resolve/main/model.bin
+        $ wget -O tokenizer.bin https://huggingface.co/huangs0/llama2.c/resolve/main/tokenizer.bin
+        or with Makefile (recommended)
+        $ make prepare
+
+##### Compile it with Level-3 Optimization and link math library (-lm, Linux built-in)
+
+        $ gcc -o inference inference_[UID].c -O3 -lm
+        or with Makefile (recommended)
+        $ make -B inference
+
 ### Compile and run the inference program.
 
     make -B inference # -B:= make, force rebuild

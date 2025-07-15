@@ -154,13 +154,11 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Note:  this shall not be called directly, use ./entry <seed> \n");
             exit(EXIT_FAILURE);
         }
-    
+    printf("Inference process Begin");
     
     while(1){ // revisit the condition.
         pause();    // wait until the parent process gets user prompt
-        
-        printf(">>> ");
-        if (fgets(buf, MAX_PROMPT_LEN, stdin) < 0){}  // accept stdin from main process
+        if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){printf("EOF error in child process");} // accept stdin from main process
         prompts[num_prompt] = buf;
         num_prompt++;
         //after getting user prompt from the main process, reset the 

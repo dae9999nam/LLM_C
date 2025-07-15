@@ -22,6 +22,7 @@
 
 // Define Global Variable, Additional Header, and Functions Here
 #include <errno.h>
+#include <sys/resource.h>
 // install signal handler here
 int child_done, sigint_received = SYSCALL_FLAG; // child is not done inferencing
 void sigint_handler(int sig){
@@ -63,6 +64,9 @@ int main(int argc, char *argv[]) {
     sigaddset(&mask, SIGINT);
     if (sigprocmask(SIG_BLOCK, &mask, &oldmask)< 0){fprintf(stderr, "Sigprocmask failed: %s\n", strerror(errno));}
 
+    // Measure the resoources
+    struct rusage used;
+
     // use fork to create child process 
     pid = fork();
     if (pid == 0){
@@ -70,30 +74,34 @@ int main(int argc, char *argv[]) {
         if (dup2(pfd[READ_END], READ_END) == -1){ // set pipe read end to stdin
             fprintf(stderr, "dup2 failed: %s\n", strerror(errno));} 
         close(pfd[READ_END]); // close the pipe read end
-        if (execlp("inference", "inference", seed, NULL) == -1){ // use exec to run inference_[UID].c for child process 
+        if (execlp("./inference", "./inference", seed, NULL) == -1){ // use exec to run inference_[UID].c for child process 
             fprintf(stderr, "execlp: error no = %s\n", strerror(errno));
             exit(1);}
     } 
     // main process: 
     // get user prompt -> pass to inference process
     // -> wait until the inference process finish inferencing & access to /proc to retrieve cpu usage information
-    else { // in the main process, accept user input
+    else { 
+        // in the main process, accept user input
         char buf[MAX_PROMPT_LEN];
-
+        int status;
         close(pfd[READ_END]); // close read end for main process
         // accept the user prompt up to 4 or until the SIGINT is received
         for(int i = 0; i < 4 && !sigint_received; i++){ // run until SIGINT not received or num_prompt < 4
-            if(!fgets(buf, MAX_PROMPT_LEN, stdin)){break;}
+            printf(">>> ");
+            if (fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){printf("EOF Error");} else{printf("User prompt received \n");}
             // pass the prompt to the pipeline to the child process.
             if (write(pfd[WRITE_END], buf, strlen(buf)) == -1){
                 fprintf(stderr, "Main process failed to write on child child process: %s\n", strerror(errno));
-            }
+            } else {printf("User prompt written on the pipe successfully \n");}
             kill(pid, SIGUSR1); // send SIGUSR1 to child process to notice the user prompt is ready
+            printf("Signal SIGUSR1 Sent to Child Process and Entering to the while loop \n");
             // while the child process is inferencing
             while(!child_done && !sigint_received) sigsuspend(&oldmask);
             child_done = SYSCALL_FLAG; // reset the flag
+
             // Monitoring status of inference process
-            
+        
         }   
         // close the write end
         close(pfd[WRITE_END]);
