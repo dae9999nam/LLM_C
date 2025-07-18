@@ -42,10 +42,12 @@ int got_signal = 0; // SIGUSR1 from parent process
  void sig_handler(int signum){
     got_signal = 1;
  }
+
+ // Handler Update Require
  void setup_handler(int signo){ // 
-    sigset_t mask, oldmask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGUSR1);
+    // sigset_t mask, oldmask;
+    //sigemptyset(&mask);
+    //sigaddset(&mask, SIGUSR1);
     struct sigaction sa;
     sa.sa_handler = sig_handler; // point to handler
     sa.sa_flags = 0; // no special flags
