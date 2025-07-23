@@ -39,19 +39,19 @@ Sampler sampler;         // sampler instance to be init
 // global variable
 int got_signal = 0; // SIGUSR1 from parent process 
 // Signal handler that make the inference process sleep until the stdin in obtained
- void sig_handler(int signum){
+ void handle_SIGUSR1(int signum){
     got_signal = 1;
  }
 
  // Handler Update Require
- void setup_handler(int signo){ // 
+ void setup_SIGUSR1_handler(int signo){ // 
     // sigset_t mask, oldmask;
     //sigemptyset(&mask);
     //sigaddset(&mask, SIGUSR1);
     struct sigaction sa;
-    sa.sa_handler = sig_handler; // point to handler
-    sa.sa_flags = 0; // no special flags
-    sigemptyset(&sa.sa_mask); // do not block other signals
+    sa.sa_handler = handle_SIGUSR1; // point to handler
+    sa.sa_flags = SA_RESTART; // no special flags
+    // sigemptyset(&sa.sa_mask); // do not block other signals
     sigaction(signo, &sa, NULL); // install it
  }
 // when inference is ready, then send signal to main process so that  
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
     // Your Code Starts Here
     char buf[MAX_PROMPT_LEN];
     // sigaction to install a signal handler
-    setup_handler(SIGUSR1);
+    setup_SIGUSR1_handler(SIGUSR1);
     // convert the following if statement to read stdin
     /*
     if (argc >= 3) {
