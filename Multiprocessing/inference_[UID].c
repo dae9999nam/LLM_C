@@ -182,7 +182,6 @@ int main(int argc, char *argv[]) {
 
     // Generation Loop, update to match requirements
     // Your code starts here
-    
         /*
         for (int i = 0; i < num_prompt; i++) {
             printf("user\n %s \n", prompts[i]);
