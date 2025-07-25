@@ -37,10 +37,14 @@ Sampler sampler;         // sampler instance to be init
 // Your Code Starts Here
 #include <signal.h>   // for handler and kill
 // global variable
-int got_signal = 0; // SIGUSR1 from parent process 
+
+char buf[MAX_PROMPT_LEN]; // user prompt
+
 // Signal handler that make the inference process sleep until the stdin in obtained
  void handle_SIGUSR1(int signum){
-    got_signal = 1;
+    // when signal is received, start to get user prompt from stdin
+    if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){printf("EOF error in child process");} // accept stdin from main process
+    
  }
 
  // Handler Update Require
@@ -130,7 +134,7 @@ int main(int argc, char *argv[]) {
 
     // parse command-line parameters via argv, you'll need to change this to read stdin
     // Your Code Starts Here
-    char buf[MAX_PROMPT_LEN];
+    
     // sigaction to install a signal handler
     setup_SIGUSR1_handler(SIGUSR1);
     // convert the following if statement to read stdin
@@ -158,34 +162,35 @@ int main(int argc, char *argv[]) {
         }
     printf("Inference process Begin");
     
-    while(1){ // revisit the condition.
-        pause();    // wait until the parent process gets user prompt
-        if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){printf("EOF error in child process");} // accept stdin from main process
-        prompts[num_prompt] = buf;
-        num_prompt++;
-        //after getting user prompt from the main process, reset the 
-        // Your Code Ends Here
+    // mask signal SIGUSR1 from parent process
+    // wait for 1 sec 
+    // unmask the signal so that the process gets the user prompt
+    
+    prompts[num_prompt] = buf;
+    num_prompt++;
+    //after getting user prompt from the main process, reset the 
+    // Your Code Ends Here
 
-        // parameter validation/overrides
-        if (rng_seed <= 0) rng_seed = (unsigned int)time(NULL);
-        // build the Transformer via the model .bin file
-        build_transformer(&transformer, model_path);
-        // build the Tokenizer via the tokenizer .bin file
-        build_tokenizer(&tokenizer, tokenizer_path, transformer.config.vocab_size);
-        // build the Sampler
-        build_sampler(&sampler, transformer.config.vocab_size, temperature, topp, rng_seed);
+    // parameter validation/overrides
+    if (rng_seed <= 0) rng_seed = (unsigned int)time(NULL);
+    // build the Transformer via the model .bin file
+    build_transformer(&transformer, model_path);
+    // build the Tokenizer via the tokenizer .bin file
+    build_tokenizer(&tokenizer, tokenizer_path, transformer.config.vocab_size);
+    // build the Sampler
+    build_sampler(&sampler, transformer.config.vocab_size, temperature, topp, rng_seed);
 
-        // Generation Loop, update to match requirements
-        // Your code starts here
-        
+    // Generation Loop, update to match requirements
+    // Your code starts here
+    
         /*
         for (int i = 0; i < num_prompt; i++) {
             printf("user\n %s \n", prompts[i]);
             generate(prompts[i]);   
         }*/
-        generate(prompts[num_prompt]);
-        kill(getppid(), SIGUSR2); //tell main process that it is ready to get next prompt
-    }  
+    generate(prompts[num_prompt]);
+    kill(getppid(), SIGUSR2); //tell main process that it is ready to get next prompt
+    
     // after that we need to go back to the first line of the main program
     // Your code ends here
     
