@@ -25,11 +25,9 @@
 #include <sys/resource.h>
 // install signal handler here
 int child_done, sigint_received = SYSCALL_FLAG; // child is not done inferencing
-void sigint_handler(int sig){
-    sigint_received = 1;
-}
-void sigusr2_handler(int sig){
-    child_done = 1;
+// default handler for signal SIGINT
+void handle_SIGUSR2(int signum){
+    // 
 }
 
 int main(int argc, char *argv[]) {
@@ -49,22 +47,13 @@ int main(int argc, char *argv[]) {
     pid_t pid;
     int pfd[2]; // pipe file descriptor
     pipe(pfd);
-    // install signal handlers here
-    // Need to always check the return from sigaction() // if (sigaction(SIGUSR2, &sa, NULL) < 0) perror("sigaction SIGUSR2 error")
-    struct sigaction sa = {0};
-    sa.sa_handler = sigusr2_handler;
-    sigaction(SIGUSR2, &sa, NULL);
-    sa.sa_handler = sigint_handler;
-    sigaction(SIGINT, &sa, NULL);
+    // install signal handler for SIGUSR2
+    struct sigaction sa;
+    sa.sa_hanlder = handle_SIGUSR2;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
 
-    //block SIGUSR2 and SIGINT so they queue up
-    sigset_t mask, oldmask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGUSR2);
-    sigaddset(&mask, SIGINT);
-    if (sigprocmask(SIG_BLOCK, &mask, &oldmask)< 0){fprintf(stderr, "Sigprocmask failed: %s\n", strerror(errno));}
-
-    // Measure the resoources
+    // Measure the resources
     struct rusage used;
 
     // use fork to create child process 
@@ -97,16 +86,11 @@ int main(int argc, char *argv[]) {
             kill(pid, SIGUSR1); // send SIGUSR1 to child process to notice the user prompt is ready
             printf("Signal SIGUSR1 Sent to Child Process and Entering to the while loop \n");
             // while the child process is inferencing
-            while(!child_done && !sigint_received) sigsuspend(&oldmask);
-            child_done = SYSCALL_FLAG; // reset the flag
-
             // Monitoring status of inference process
         
         }   
         // close the write end
         close(pfd[WRITE_END]);
-        // restore the original mask if you want
-        sigprocmask(SIG_SETMASK, &oldmask, NULL);
         wait(NULL); // wait for child process to finish
     }
 
