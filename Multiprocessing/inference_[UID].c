@@ -46,18 +46,6 @@ char buf[MAX_PROMPT_LEN]; // user prompt
     if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){printf("EOF error in child process");} // accept stdin from main process
     
  }
-
- // Handler Update Require
- void setup_SIGUSR1_handler(int signo){ // 
-    // sigset_t mask, oldmask;
-    //sigemptyset(&mask);
-    //sigaddset(&mask, SIGUSR1);
-    struct sigaction sa;
-    sa.sa_handler = handle_SIGUSR1; // point to handler
-    sa.sa_flags = SA_RESTART; // no special flags
-    // sigemptyset(&sa.sa_mask); // do not block other signals
-    sigaction(signo, &sa, NULL); // install it
- }
 // when inference is ready, then send signal to main process so that  
 
 // Your Code Ends Here
@@ -134,9 +122,10 @@ int main(int argc, char *argv[]) {
 
     // parse command-line parameters via argv, you'll need to change this to read stdin
     // Your Code Starts Here
-    
-    // sigaction to install a signal handler
-    setup_SIGUSR1_handler(SIGUSR1);
+    struct sigaction SIGUSR1_handler;
+    SIGUSR1_handler.sa_handler = handle_SIGUSR1;
+    sigemptyset(&SIGUSR1_handler.sa_mask);
+    SIGUSR1_handler.sa_flags = SA_RESTART;
     // convert the following if statement to read stdin
     /*
     if (argc >= 3) {
@@ -160,11 +149,12 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Note:  this shall not be called directly, use ./entry <seed> \n");
             exit(EXIT_FAILURE);
         }
-    printf("Inference process Begin");
+    printf("Inference process Begins");
     
     // mask signal SIGUSR1 from parent process
     // wait for 1 sec 
     // unmask the signal so that the process gets the user prompt
+
     
     prompts[num_prompt] = buf;
     num_prompt++;
