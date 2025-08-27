@@ -92,11 +92,13 @@ int main(int argc, char *argv[]) {
         // accept the user prompt up to 4 or until the SIGINT is received
         for(int i = 0; i < 4; i++){ // run until SIGINT not received or num_prompt < 4
             printf(">>> ");
+            
             if (fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){printf("EOF Error");} 
             else{
                 printf("User prompt received \n");
                 printf("%s", buf);
                 }
+            // Potential Error Occured here
             int pipe_write = write(pfd[WRITE_END], buf, strlen(buf));
             printf("%d", pipe_write);
             // pass the prompt to the pipeline to the child process.
