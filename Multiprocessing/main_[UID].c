@@ -76,6 +76,7 @@ int main(int argc, char *argv[]) {
         if (dup2(pfd[READ_END], READ_END) == -1){ // set pipe read end to stdin
             perror("dup2 failed");} else {printf("Child process dup2");}
         close(pfd[READ_END]); // close the pipe read end
+        // execlp method update required 
         if (execlp("./inference", "./inference", seed, NULL) == -1){ // use exec to run inference_[UID].c for child process 
             perror("execlp failed");
             exit(1);}
