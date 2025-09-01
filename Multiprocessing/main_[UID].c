@@ -71,15 +71,16 @@ int main(int argc, char *argv[]) {
     // use fork to create child process 
     pid = fork();
     if (pid == 0){
-        printf("Child process");
+        fprintf(stderr, "Child process begin\n ");
         close(pfd[WRITE_END]); // close the write end for child process
-        if (dup2(pfd[READ_END], READ_END) == -1){ // set pipe read end to stdin
-            perror("dup2 failed");} else {printf("Child process dup2");}
-        close(pfd[READ_END]); // close the pipe read end
-        // execlp method update required 
-        if (execlp("./inference", "./inference", seed, NULL) == -1){ // use exec to run inference_[UID].c for child process 
+
+        if (dup2(pfd[READ_END], STDIN_FILENO) == -1){ // set pipe read end to stdin
+            perror("dup2 failed");
+            return 2;} else {fprintf(stderr, "Child process dup2\n");}
+        close(pfd[READ_END]); // close the read end for child process
+        if (execl("./inference", "inference", seed, (char *)NULL) == -1){ // use execl to run inference_[UID].c for child process 
             perror("execlp failed");
-            exit(1);}
+            return 3;}
     } 
     // main process: 
     // get user prompt -> pass to inference process
@@ -93,23 +94,24 @@ int main(int argc, char *argv[]) {
         // accept the user prompt up to 4 or until the SIGINT is received
         for(int i = 0; i < 4; i++){ // run until SIGINT not received or num_prompt < 4
             printf(">>> ");
-            
-            if (fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){printf("EOF Error");} 
-            else{
-                printf("User prompt received \n");
-                printf("%s", buf);
-                }
+            fflush(stdout);
+            if (fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){
+                perror("EOF Error");
+                return 4;
+            } else{
+                fprintf(stderr, "User prompt received \n");
+                fprintf(stderr, "%s", buf);
+            }
             // Potential Error Occured here
-            int pipe_write = write(pfd[WRITE_END], buf, strlen(buf));
-            printf("%d", pipe_write);
-            // pass the prompt to the pipeline to the child process.
-            if (pipe_write == -1){
-                perror("Main process failed to write on child child process");
-            } else {printf("User prompt written on the pipe successfully. \n");}
+            if(write(pfd[WRITE_END], buf, strlen(buf)) == -1){
+                perror("Pipe Write Error");
+                return 5;
+            }
             kill(pid, SIGUSR1); // send SIGUSR1 to child process to notice the user prompt is ready
-            printf("Signal SIGUSR1 Sent to Child Process and Entering to the while loop \n");
+            fprintf(stderr, "Signal SIGUSR1 Sent to Child Process and Entering to the while loop \n");
             // while the child process is inferencing
             // Monitoring status of inference process
+            
             while(!SIGUSR2_flag){
                 sprintf(path, "/proc/%d/stat", pid);
                 FILE *fp = fopen(path, "r");
@@ -124,7 +126,7 @@ int main(int argc, char *argv[]) {
         // close the write end
         close(pfd[WRITE_END]);
         wait4(pid, &status, 0, &used); // wait for child process to finish
-        printf("Child process exited, with exit status: %d\n", WTERMSIG(status));
+        fprintf(stderr, "Child process exited, with exit status: %d\n", WTERMSIG(status));
     }
 
     return EXIT_SUCCESS;

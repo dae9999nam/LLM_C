@@ -1,3 +1,7 @@
 # model and tokenizer file
 
 *.bin
+
+# executable files 
+inference
+main

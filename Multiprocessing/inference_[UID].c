@@ -137,6 +137,8 @@ int main(int argc, char *argv[]) {
     }*/
     if(argc == 2){
         rng_seed = atoi(argv[1]);
+        fprintf(stderr, "%ld \n", rng_seed);
+        fprintf(stderr, "Seed Received to Child process \n");
     }
     else {  /*
             fprintf(stderr, "Usage:   ./inference <seed> <prompt1> <prompt2>\n");
@@ -149,7 +151,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Note:  this shall not be called directly, use ./entry <seed> \n");
             exit(EXIT_FAILURE);
         }
-    printf("Inference process Begins");
+    fprintf(stderr, "Inference process Begins \n");
     
     // mask signal SIGUSR1 from parent process
     // wait for 1 sec 
