@@ -27,15 +27,17 @@
 char path[256]; 
 // install signal handler here
 int SIGUSR2_flag = SYSCALL_FLAG; // child is not done inferencing
+int count = 0;
 // default handler for signal SIGINT
 void handle_SIGUSR2(int signum){
     // Update the SIGUSR2 flag
     SIGUSR2_flag = 1;
-    fprintf(stderr, "Main process: SIGUSR2 Received");
-
+    fprintf(stderr, "Main process: SIGUSR2 Received\n");
+    count++;
 }
 void handle_SIGINT(int signnum){
-    fprintf(stderr, "SIGINT i.e. CTRL-C Received");
+    fprintf(stderr, "SIGINT i.e. CTRL-C Received\n");
+    exit(1);
 }
 
 int main(int argc, char *argv[]) {
@@ -60,7 +62,7 @@ int main(int argc, char *argv[]) {
 
     // install signal handler for SIGUSR2 and SIGINT
     struct sigaction SIGUSR2_handler, SIGINT_handler;
-   
+
     SIGUSR2_handler.sa_handler = handle_SIGUSR2;
     SIGINT_handler.sa_handler = handle_SIGINT;
  
@@ -70,6 +72,8 @@ int main(int argc, char *argv[]) {
     SIGUSR2_handler.sa_flags = SA_RESTART;
     SIGINT_handler.sa_flags = SA_RESTART;
 
+    sigaction(SIGUSR2, &SIGUSR2_handler, NULL);
+    sigaction(SIGINT, &SIGINT_handler, NULL);
     // Measure the resources
     struct rusage used;
 
@@ -130,9 +134,11 @@ int main(int argc, char *argv[]) {
             }
             // reset the SIGUSR2 flag
             SIGUSR2_flag = 0;
-        }   
+        }
         // close the write end
+        fprintf(stderr, "Main Process: 4 Prompt Received. Now Close the write end\n");
         close(pfd[WRITE_END]);
+        fprintf(stderr, "Main Process: Wait for Child Process to terminate");
         wait4(pid, &status, 0, &used); // wait for child process to finish
         fprintf(stderr, "Child process exited, with exit status: %d\n", WTERMSIG(status));
     }

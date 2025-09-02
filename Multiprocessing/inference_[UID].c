@@ -38,12 +38,10 @@ Sampler sampler;         // sampler instance to be init
 // Your Code Starts Here
 // global variable
 char buf[MAX_PROMPT_LEN]; // user prompt
-sigset_t mask;
-int flag = 0;
+sigset_t mask, old_mask;
 void handle_SIGUSR1(int signum){
     // when signal is received, start to get user prompt from stdin
-    flag = 1;
-    if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){fprintf(stderr, "EOF error in child process");} // accept stdin from main process
+    fprintf(stderr, "Child Process: SIGUSR1 Received\n");
  }
 
 // Your Code Ends Here
@@ -124,6 +122,7 @@ int main(int argc, char *argv[]) {
     SIGUSR1_handler.sa_handler = handle_SIGUSR1;
     sigemptyset(&SIGUSR1_handler.sa_mask);
     SIGUSR1_handler.sa_flags = SA_RESTART;
+    sigaction(SIGUSR1, &SIGUSR1_handler, NULL);
     // need to mask the SIGUSR1 here
     sigaddset(&mask, SIGUSR1);
     sigprocmask(SIG_BLOCK, &mask, NULL);
@@ -180,20 +179,19 @@ int main(int argc, char *argv[]) {
             printf("user\n %s \n", prompts[i]);
             generate(prompts[i]);   
         }*/
-    // we need a loop here
-    generate(prompts[num_prompt -1]);
-    kill(getppid(), SIGUSR2);
-//    do{
-//        generate(prompts[num_prompt]);
-//        kill(getppid(), SIGUSR2);
-//        sigsuspend(&mask);
-//        // when SIGUSR1 is received, then the process gets prompt from stdin and set it as buf
-//        // need to unmask the SIGUSR1 here 
-//        sigprocmask(SIG_UNBLOCK, &mask, NULL);
-//        prompts[num_prompt] = buf;
-//        num_prompt++;
-//        sigprocmask(SIG_BLOCK, &mask, NULL);
-//    } while(num_prompt < 5);
+
+    do{
+        generate(prompts[num_prompt-1]);
+        kill(getppid(), SIGUSR2);
+        sigsuspend(&old_mask);
+        // when SIGUSR1 is received, then the process gets prompt from stdin and set it as buf
+        // need to unmask the SIGUSR1 here 
+        sigprocmask(SIG_UNBLOCK, &mask, NULL);
+        if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){fprintf(stderr, "EOF error in child process");} // accept stdin from main process
+        prompts[num_prompt] = buf;
+        num_prompt++;
+        sigprocmask(SIG_BLOCK, &mask, NULL);
+    } while(num_prompt < 5);
     // Your code ends here
     
     // memory and file handles cleanup
