@@ -31,9 +31,11 @@ int SIGUSR2_flag = SYSCALL_FLAG; // child is not done inferencing
 void handle_SIGUSR2(int signum){
     // Update the SIGUSR2 flag
     SIGUSR2_flag = 1;
+    fprintf(stderr, "Main process: SIGUSR2 Received");
+
 }
 void handle_SIGINT(int signnum){
-    printf("SIGINT i.e. CTRL-C Received");
+    fprintf(stderr, "SIGINT i.e. CTRL-C Received");
 }
 
 int main(int argc, char *argv[]) {
@@ -52,16 +54,19 @@ int main(int argc, char *argv[]) {
     int pid;
     int pfd[2]; // pipe file descriptor
     if (pipe(pfd) == -1){
-        printf("Pipe Error");
+        fprintf(stderr, "Pipe Error");
         return 2;
-    } else {printf("Pipe Created Successfully\n");}
+    } else {fprintf(stderr, "Pipe Created Successfully\n");}
 
     // install signal handler for SIGUSR2 and SIGINT
     struct sigaction SIGUSR2_handler, SIGINT_handler;
+   
     SIGUSR2_handler.sa_handler = handle_SIGUSR2;
     SIGINT_handler.sa_handler = handle_SIGINT;
+ 
     sigemptyset(&SIGUSR2_handler.sa_mask);
     sigemptyset(&SIGINT_handler.sa_mask);
+
     SIGUSR2_handler.sa_flags = SA_RESTART;
     SIGINT_handler.sa_flags = SA_RESTART;
 
@@ -71,7 +76,7 @@ int main(int argc, char *argv[]) {
     // use fork to create child process 
     pid = fork();
     if (pid == 0){
-        fprintf(stderr, "Child process begin\n ");
+        fprintf(stderr, "Child process begin\n");
         close(pfd[WRITE_END]); // close the write end for child process
 
         if (dup2(pfd[READ_END], STDIN_FILENO) == -1){ // set pipe read end to stdin
@@ -95,7 +100,7 @@ int main(int argc, char *argv[]) {
         for(int i = 0; i < 4; i++){ // run until SIGINT not received or num_prompt < 4
             printf(">>> ");
             fflush(stdout);
-            if (fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){
+            if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){
                 perror("EOF Error");
                 return 4;
             } else{
@@ -106,6 +111,8 @@ int main(int argc, char *argv[]) {
             if(write(pfd[WRITE_END], buf, strlen(buf)) == -1){
                 perror("Pipe Write Error");
                 return 5;
+            }else{
+                fprintf(stderr, "Main process Write to Child Process\n");
             }
             kill(pid, SIGUSR1); // send SIGUSR1 to child process to notice the user prompt is ready
             fprintf(stderr, "Signal SIGUSR1 Sent to Child Process and Entering to the while loop \n");
@@ -118,7 +125,8 @@ int main(int argc, char *argv[]) {
                 if (fp == NULL){
                     fprintf(stderr, "Opening /proc/{pid}/stat Failed: %s\n", strerror(errno));
                 }
-                sleep(0.3); // sleep for 300ms 
+                usleep(300000);// 300 ms
+                // retrieve items here
             }
             // reset the SIGUSR2 flag
             SIGUSR2_flag = 0;

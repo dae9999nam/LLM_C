@@ -34,19 +34,17 @@ Tokenizer tokenizer;     // tokenizer instance to be init
 Sampler sampler;         // sampler instance to be init
 
 // Define Additional Global Variables and Signal Handlers Here
+#include <signal.h>
 // Your Code Starts Here
-#include <signal.h>   // for handler and kill
 // global variable
-
 char buf[MAX_PROMPT_LEN]; // user prompt
-
-// Signal handler that make the inference process sleep until the stdin in obtained
- void handle_SIGUSR1(int signum){
+sigset_t mask;
+int flag = 0;
+void handle_SIGUSR1(int signum){
     // when signal is received, start to get user prompt from stdin
-    if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){printf("EOF error in child process");} // accept stdin from main process
-    
+    flag = 1;
+    if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){fprintf(stderr, "EOF error in child process");} // accept stdin from main process
  }
-// when inference is ready, then send signal to main process so that  
 
 // Your Code Ends Here
 // ----------------------------------------------------------------------------
@@ -126,7 +124,9 @@ int main(int argc, char *argv[]) {
     SIGUSR1_handler.sa_handler = handle_SIGUSR1;
     sigemptyset(&SIGUSR1_handler.sa_mask);
     SIGUSR1_handler.sa_flags = SA_RESTART;
-    // convert the following if statement to read stdin
+    // need to mask the SIGUSR1 here
+    sigaddset(&mask, SIGUSR1);
+    sigprocmask(SIG_BLOCK, &mask, NULL);
     /*
     if (argc >= 3) {
         rng_seed = atoi(argv[1]);
@@ -139,6 +139,11 @@ int main(int argc, char *argv[]) {
         rng_seed = atoi(argv[1]);
         fprintf(stderr, "%ld \n", rng_seed);
         fprintf(stderr, "Seed Received to Child process \n");
+        if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){
+            fprintf(stderr, "Prompt reading Error in child process");
+            return 4;
+        } 
+        fprintf(stderr, "Child Process: %s", buf);
     }
     else {  /*
             fprintf(stderr, "Usage:   ./inference <seed> <prompt1> <prompt2>\n");
@@ -152,15 +157,11 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
     fprintf(stderr, "Inference process Begins \n");
-    
-    // mask signal SIGUSR1 from parent process
-    // wait for 1 sec 
-    // unmask the signal so that the process gets the user prompt
 
-    
     prompts[num_prompt] = buf;
     num_prompt++;
-    //after getting user prompt from the main process, reset the 
+    fprintf(stderr, "Prompt saved: %s", prompts[num_prompt -1]);
+
     // Your Code Ends Here
 
     // parameter validation/overrides
@@ -179,10 +180,20 @@ int main(int argc, char *argv[]) {
             printf("user\n %s \n", prompts[i]);
             generate(prompts[i]);   
         }*/
-    generate(prompts[num_prompt]);
-    kill(getppid(), SIGUSR2); //tell main process that it is ready to get next prompt
-    
-    // after that we need to go back to the first line of the main program
+    // we need a loop here
+    generate(prompts[num_prompt -1]);
+    kill(getppid(), SIGUSR2);
+//    do{
+//        generate(prompts[num_prompt]);
+//        kill(getppid(), SIGUSR2);
+//        sigsuspend(&mask);
+//        // when SIGUSR1 is received, then the process gets prompt from stdin and set it as buf
+//        // need to unmask the SIGUSR1 here 
+//        sigprocmask(SIG_UNBLOCK, &mask, NULL);
+//        prompts[num_prompt] = buf;
+//        num_prompt++;
+//        sigprocmask(SIG_BLOCK, &mask, NULL);
+//    } while(num_prompt < 5);
     // Your code ends here
     
     // memory and file handles cleanup
@@ -191,3 +202,13 @@ int main(int argc, char *argv[]) {
     free_transformer(&transformer);
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
