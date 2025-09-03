@@ -23,12 +23,7 @@
 // Define Global Variable, Additional Header, and Functions Here
 #include <errno.h>
 #include <sys/resource.h>
-// file path for /proc/pid/meminfo
-char path[256]; 
 
-// CPU usage and Memory usage of child process
-char cpuinfo[256];
-char meminfo[256];
 // install signal handler here
 int SIGUSR2_flag = SYSCALL_FLAG; // child is not done inferencing
 int count = 0;
@@ -43,9 +38,41 @@ void handle_SIGINT(int signnum){
     fprintf(stderr, "SIGINT i.e. CTRL-C Received\n");
     exit(1);
 }
+// file path for /proc/pid/meminfo
+char path[256]; 
+// CPU usage and Memory usage of child process
+char cpuinfo[256];
+char meminfo[256];
+
+void CPU_Monitor(){
+    FILE * cpu_fp = fopen("/proc/cpuinfo", "r");
+    if(cpu_fp == NULL){
+        fprintf(stderr, "CPU Retrieving Failed");
+    }
+    if(fgets(cpuinfo, sizeof(cpuinfo), cpu_fp) == NULL){
+        fprintf(stderr, "Reading CPU usage Error\n");
+    } else{
+        fprintf(stderr, "%s\n", cpuinfo);
+    }
+    // need to add a part to redirect the stderr to log file using 2>log
+    fclose(cpu_fp);
+}
+
+void MEM_Monitor(char path[]){
+    FILE *mem_fp = fopen(path, "r");
+    if (mem_fp == NULL){
+        fprintf(stderr, "Opening /proc/{pid}/meminfo Failed\n");
+    }
+    if(fgets(meminfo, sizeof(meminfo), mem_fp) == NULL){
+        fprintf(stderr, "Reading Memory usage Error\n");
+    } else {
+        fprintf(stderr, "%s\n", meminfo);
+    }
+    fclose(mem_fp);
+}
 
 int main(int argc, char *argv[]) {
-    char* seed; // 
+    char* seed; 
     if (argc == 2) {
         seed = argv[1];
     } else if (argc == 1) {
@@ -109,48 +136,25 @@ int main(int argc, char *argv[]) {
             printf(">>> ");
             fflush(stdout);
             if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){
-                perror("EOF Error");
+                fprintf(stderr, "EOF Error\n");
                 return 4;
-            } else{
-                fprintf(stderr, "User prompt received \n");
-                fprintf(stderr, "%s", buf);
-            }
+            } 
             // Potential Error Occured here
             if(write(pfd[WRITE_END], buf, strlen(buf)) == -1){
-                perror("Pipe Write Error");
+                fprintf(stderr, "Pipe Write Error\n");
                 return 5;
-            }else{
-                fprintf(stderr, "Main process Write to Child Process\n");
             }
             kill(pid, SIGUSR1); // send SIGUSR1 to child process to notice the user prompt is ready
-            fprintf(stderr, "Signal SIGUSR1 Sent to Child Process and Entering to the while loop \n");
             // while the child process is inferencing
+            
             // Monitoring status of inference process
-            FILE * cpu_fp = fopen("/proc/cpuinfo", "r");
-            if(cpu_fp == NULL){
-                fprintf(stderr, "CPU Retrieving Failed");
-            }
+            
             sprintf(path, "/proc/%d/meminfo", pid);
-            FILE *mem_fp = fopen(path, "r");
-            if (mem_fp == NULL){
-                fprintf(stderr, "Opening /proc/{pid}/meminfo Failed\n");
-            }
+            
             while(!SIGUSR2_flag){
                 usleep(300000);// sleep for 300 ms
-                // Monitoring CPU usage and Memory usage of inference process
-                if(fgets(cpuinfo, sizeof(cpuinfo), cpu_fp) == NULL){
-                    fprintf(stderr, "Reading CPU usage Error\n");
-                } else{
-                    fprintf(stderr, "%s\n", cpuinfo);
-                }
-            //    if(fgets(meminfo, sizeof(meminfo), mem_fp) == NULL){
-     //               fprintf(stderr, "Reading Memory usage Error\n");
- //               } else {
-               //     fprintf(stderr, "%s\n", meminfo);
-     //           }
+                CPU_Monitor();  
             }
-            fclose(cpu_fp);
-            fclose(mem_fp);
             // reset the SIGUSR2 flag
             SIGUSR2_flag = 0;
         }
