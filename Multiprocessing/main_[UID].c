@@ -23,8 +23,12 @@
 // Define Global Variable, Additional Header, and Functions Here
 #include <errno.h>
 #include <sys/resource.h>
-// file path for /proc/pid
+// file path for /proc/pid/meminfo
 char path[256]; 
+
+// CPU usage and Memory usage of child process
+char cpuinfo[256];
+char meminfo[256];
 // install signal handler here
 int SIGUSR2_flag = SYSCALL_FLAG; // child is not done inferencing
 int count = 0;
@@ -122,16 +126,31 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Signal SIGUSR1 Sent to Child Process and Entering to the while loop \n");
             // while the child process is inferencing
             // Monitoring status of inference process
-            
-            while(!SIGUSR2_flag){
-                sprintf(path, "/proc/%d/stat", pid);
-                FILE *fp = fopen(path, "r");
-                if (fp == NULL){
-                    fprintf(stderr, "Opening /proc/{pid}/stat Failed: %s\n", strerror(errno));
-                }
-                usleep(300000);// 300 ms
-                // retrieve items here
+            FILE * cpu_fp = fopen("/proc/cpuinfo", "r");
+            if(cpu_fp == NULL){
+                fprintf(stderr, "CPU Retrieving Failed");
             }
+            sprintf(path, "/proc/%d/meminfo", pid);
+            FILE *mem_fp = fopen(path, "r");
+            if (mem_fp == NULL){
+                fprintf(stderr, "Opening /proc/{pid}/meminfo Failed\n");
+            }
+            while(!SIGUSR2_flag){
+                usleep(300000);// sleep for 300 ms
+                // Monitoring CPU usage and Memory usage of inference process
+                if(fgets(cpuinfo, sizeof(cpuinfo), cpu_fp) == NULL){
+                    fprintf(stderr, "Reading CPU usage Error\n");
+                } else{
+                    fprintf(stderr, "%s\n", cpuinfo);
+                }
+            //    if(fgets(meminfo, sizeof(meminfo), mem_fp) == NULL){
+     //               fprintf(stderr, "Reading Memory usage Error\n");
+ //               } else {
+               //     fprintf(stderr, "%s\n", meminfo);
+     //           }
+            }
+            fclose(cpu_fp);
+            fclose(mem_fp);
             // reset the SIGUSR2 flag
             SIGUSR2_flag = 0;
         }
