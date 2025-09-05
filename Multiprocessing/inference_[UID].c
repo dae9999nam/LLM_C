@@ -41,7 +41,7 @@ char buf[MAX_PROMPT_LEN]; // user prompt
 sigset_t mask, old_mask;
 void handle_SIGUSR1(int signum){
     // when signal is received, start to get user prompt from stdin
-    fprintf(stderr, "Child Process: SIGUSR1 Received\n");
+    //fprintf(stderr, "Child Process: SIGUSR1 Received\n");
  }
 
 // Your Code Ends Here
@@ -136,13 +136,7 @@ int main(int argc, char *argv[]) {
     }*/
     if(argc == 2){
         rng_seed = atoi(argv[1]);
-        fprintf(stderr, "%ld \n", rng_seed);
-        fprintf(stderr, "Seed Received to Child process \n");
-        if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){
-            fprintf(stderr, "Prompt reading Error in child process");
-            return 4;
-        } 
-        fprintf(stderr, "Child Process: %s", buf);
+        //fprintf(stderr, "%ld \n", rng_seed);
     }
     else {  /*
             fprintf(stderr, "Usage:   ./inference <seed> <prompt1> <prompt2>\n");
@@ -155,12 +149,8 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Note:  this shall not be called directly, use ./entry <seed> \n");
             exit(EXIT_FAILURE);
         }
-    fprintf(stderr, "Inference process Begins \n");
 
     prompts[num_prompt] = buf;
-    num_prompt++;
-    fprintf(stderr, "Prompt saved: %s", prompts[num_prompt -1]);
-
     // Your Code Ends Here
 
     // parameter validation/overrides
@@ -180,25 +170,22 @@ int main(int argc, char *argv[]) {
             generate(prompts[i]);   
         }*/
 
-    do{
-        generate(prompts[num_prompt-1]);
-        kill(getppid(), SIGUSR2);
+    while(num_prompt < 4){
         sigsuspend(&old_mask);
-        // when SIGUSR1 is received, then the process gets prompt from stdin and set it as buf
-        // need to unmask the SIGUSR1 here 
         sigprocmask(SIG_UNBLOCK, &mask, NULL);
-        if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){fprintf(stderr, "EOF error in child process");} // accept stdin from main process
-        prompts[num_prompt] = buf;
-        num_prompt++;
+        if(fgets(buf, MAX_PROMPT_LEN, stdin) == NULL){fprintf(stderr, "Prompt reading Error in child process");} 
+        prompts[num_prompt] = buf;   
+        generate(prompts[num_prompt]);
+        num_prompt++;  
+        kill(getppid(), SIGUSR2);
         sigprocmask(SIG_BLOCK, &mask, NULL);
-    } while(num_prompt < 5);
+    }
     // Your code ends here
-    
     // memory and file handles cleanup
     free_sampler(&sampler);
     free_tokenizer(&tokenizer);
     free_transformer(&transformer);
-    return 0;
+    exit(0);
 }
 
 

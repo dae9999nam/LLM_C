@@ -27,17 +27,20 @@
 // install signal handler here
 int SIGUSR2_flag = SYSCALL_FLAG; // child is not done inferencing
 int count = 0;
+int monitor_flag = SYSCALL_FLAG;
 // default handler for signal SIGINT
 void handle_SIGUSR2(int signum){
     // Update the SIGUSR2 flag
     SIGUSR2_flag = 1;
-    fprintf(stderr, "Main process: SIGUSR2 Received\n");
     count++;
 }
 void handle_SIGINT(int signnum){
     fprintf(stderr, "SIGINT i.e. CTRL-C Received\n");
     exit(1);
 }
+
+// Monitor Should be only done when ./main 42 2>log is called
+
 // file path for /proc/pid/meminfo
 char path[256]; 
 // CPU usage and Memory usage of child process
@@ -61,7 +64,7 @@ void CPU_Monitor(){
 void MEM_Monitor(char path[]){
     FILE *mem_fp = fopen(path, "r");
     if (mem_fp == NULL){
-        fprintf(stderr, "Opening /proc/{pid}/meminfo Failed\n");
+        fprintf(stderr, "Opening /proc/{pid}/stat Failed\n");
     }
     if(fgets(meminfo, sizeof(meminfo), mem_fp) == NULL){
         fprintf(stderr, "Reading Memory usage Error\n");
@@ -78,6 +81,10 @@ int main(int argc, char *argv[]) {
     } else if (argc == 1) {
         // use 42, the answer to life the universe and everything, as default
         seed = "42";
+    } else if (argc == 3) {
+        if (argv[2] == "2>log"){
+            monitor_flag = 1;
+        }
     } else {
         fprintf(stderr, "Usage: ./main <seed>\n");
         fprintf(stderr, "Note:  default seed is 42\n");
@@ -89,7 +96,7 @@ int main(int argc, char *argv[]) {
     if (pipe(pfd) == -1){
         fprintf(stderr, "Pipe Error");
         return 2;
-    } else {fprintf(stderr, "Pipe Created Successfully\n");}
+    } // else {fprintf(stderr, "Pipe Created Successfully\n");}
 
     // install signal handler for SIGUSR2 and SIGINT
     struct sigaction SIGUSR2_handler, SIGINT_handler;
@@ -105,18 +112,15 @@ int main(int argc, char *argv[]) {
 
     sigaction(SIGUSR2, &SIGUSR2_handler, NULL);
     sigaction(SIGINT, &SIGINT_handler, NULL);
-    // Measure the resources
-    struct rusage used;
 
     // use fork to create child process 
     pid = fork();
     if (pid == 0){
-        fprintf(stderr, "Child process begin\n");
         close(pfd[WRITE_END]); // close the write end for child process
 
         if (dup2(pfd[READ_END], STDIN_FILENO) == -1){ // set pipe read end to stdin
             perror("dup2 failed");
-            return 2;} else {fprintf(stderr, "Child process dup2\n");}
+            return 2;} // else {fprintf(stderr, "Child process dup2\n");}
         close(pfd[READ_END]); // close the read end for child process
         if (execl("./inference", "inference", seed, (char *)NULL) == -1){ // use execl to run inference_[UID].c for child process 
             perror("execlp failed");
@@ -127,9 +131,10 @@ int main(int argc, char *argv[]) {
     // -> wait until the inference process finish inferencing & access to /proc to retrieve cpu usage information
     else { 
         // in the main process, accept user input
-        sleep(3);
+        // sleep(3);
         char buf[MAX_PROMPT_LEN];
         int status;
+        pid_t w;
         close(pfd[READ_END]); // close read end for main process
         // accept the user prompt up to 4 or until the SIGINT is received
         for(int i = 0; i < 4; i++){ // run until SIGINT not received or num_prompt < 4
@@ -149,22 +154,28 @@ int main(int argc, char *argv[]) {
             
             // Monitoring status of inference process
             
-            sprintf(path, "/proc/%d/meminfo", pid);
+            sprintf(path, "/proc/%d/stat", pid);
             
             while(!SIGUSR2_flag){
                 usleep(300000);// sleep for 300 ms
-                CPU_Monitor();  
+                // Monitor the /proc file system only when 2>log
+                if(monitor_flag == 1){
+                    CPU_Monitor();
+                    MEM_Monitor(path);
+                }
             }
             // reset the SIGUSR2 flag
             SIGUSR2_flag = 0;
         }
-        // close the write end
-        fprintf(stderr, "Main Process: 4 Prompt Received. Now Close the write end\n");
+        w = waitpid(pid, &status, 0); // wait for child process to finish
+        if(w == -1){
+            fprintf(stderr, "Waitpid Error\n");
+        }
+        fprintf(stderr, "Child process exited, with exit status: %d\n", WEXITSTATUS(status));
         close(pfd[WRITE_END]);
-        fprintf(stderr, "Main Process: Wait for Child Process to terminate");
-        wait4(pid, &status, 0, &used); // wait for child process to finish
-        fprintf(stderr, "Child process exited, with exit status: %d\n", WTERMSIG(status));
     }
+    
+
 
     return EXIT_SUCCESS;
 }
