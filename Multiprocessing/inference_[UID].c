@@ -126,25 +126,12 @@ int main(int argc, char *argv[]) {
     // need to mask the SIGUSR1 here
     sigaddset(&mask, SIGUSR1);
     sigprocmask(SIG_BLOCK, &mask, NULL);
-    /*
-    if (argc >= 3) {
-        rng_seed = atoi(argv[1]);
-        num_prompt = (argc - 2) < 4 ? (argc - 2) : 4;
-        for (int i = 0; i < num_prompt; i++) {
-            prompts[i] = argv[i + 2];
-        }
-    }*/
+
     if(argc == 2){
         rng_seed = atoi(argv[1]);
         //fprintf(stderr, "%ld \n", rng_seed);
     }
-    else {  /*
-            fprintf(stderr, "Usage:   ./inference <seed> <prompt1> <prompt2>\n");
-            fprintf(stderr, "Example: ./inference 42 \"What is Fibonacci Number?\" \"Can you give me a python program to generate Fibonacci Number?\"\n");
-            fprintf(stderr, "Note:    <prompt> must be quoted with \"\", at most 4 prompt is supported \n");
-            exit(EXIT_FAILURE);
-            */
-            // target interface
+    else {  
             fprintf(stderr, "Usage: ./inference <seed>\n");
             fprintf(stderr, "Note:  this shall not be called directly, use ./entry <seed> \n");
             exit(EXIT_FAILURE);
@@ -163,13 +150,6 @@ int main(int argc, char *argv[]) {
     build_sampler(&sampler, transformer.config.vocab_size, temperature, topp, rng_seed);
 
     // Generation Loop, update to match requirements
-    // Your code starts here
-        /*
-        for (int i = 0; i < num_prompt; i++) {
-            printf("user\n %s \n", prompts[i]);
-            generate(prompts[i]);   
-        }*/
-
     while(num_prompt < 4){
         sigsuspend(&old_mask);
         sigprocmask(SIG_UNBLOCK, &mask, NULL);
@@ -185,7 +165,7 @@ int main(int argc, char *argv[]) {
     free_sampler(&sampler);
     free_tokenizer(&tokenizer);
     free_transformer(&transformer);
-    exit(0);
+    return 0;
 }
 
 

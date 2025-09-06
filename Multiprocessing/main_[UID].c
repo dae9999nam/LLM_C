@@ -26,17 +26,15 @@
 
 // install signal handler here
 int SIGUSR2_flag = SYSCALL_FLAG; // child is not done inferencing
-int count = 0;
-int monitor_flag = SYSCALL_FLAG;
 // default handler for signal SIGINT
 void handle_SIGUSR2(int signum){
     // Update the SIGUSR2 flag
     SIGUSR2_flag = 1;
-    count++;
 }
-void handle_SIGINT(int signnum){
+
+void handle_SIGINT(int signum){
     fprintf(stderr, "SIGINT i.e. CTRL-C Received\n");
-    exit(1);
+    exit(130);
 }
 
 // Monitor Should be only done when ./main 42 2>log is called
@@ -44,34 +42,44 @@ void handle_SIGINT(int signnum){
 // file path for /proc/pid/meminfo
 char path[256]; 
 // CPU usage and Memory usage of child process
-char cpuinfo[256];
-char meminfo[256];
+char stat[2048];
 
-void CPU_Monitor(){
-    FILE * cpu_fp = fopen("/proc/cpuinfo", "r");
-    if(cpu_fp == NULL){
-        fprintf(stderr, "CPU Retrieving Failed");
-    }
-    if(fgets(cpuinfo, sizeof(cpuinfo), cpu_fp) == NULL){
-        fprintf(stderr, "Reading CPU usage Error\n");
-    } else{
-        fprintf(stderr, "%s\n", cpuinfo);
-    }
-    // need to add a part to redirect the stderr to log file using 2>log
-    fclose(cpu_fp);
-}
-
-void MEM_Monitor(char path[]){
-    FILE *mem_fp = fopen(path, "r");
-    if (mem_fp == NULL){
+struct stat {
+    int pid;
+    char tcomm[256];
+    char state;
+    unsigned long utime;
+    unsigned long stime;
+    long nice;
+    unsigned long vsize;
+    int processor;
+    unsigned int policy;
+};
+// Monitor item: 
+/*
+pid: 1 %d
+tcomm: 2 %s
+state: 3 %c
+policy 41 %u
+nice: 19 %ld
+vsize: 23 %lu
+task_cpu - processor: 39 %d  
+utime: 14 %lu
+stime: 15 %lu
+*/
+void Monitor(char path[]){
+    FILE *fp = fopen(path, "r");
+    if (!fp){
         fprintf(stderr, "Opening /proc/{pid}/stat Failed\n");
     }
-    if(fgets(meminfo, sizeof(meminfo), mem_fp) == NULL){
+    if(fgets(stat, sizeof(stat), fp) == NULL){
         fprintf(stderr, "Reading Memory usage Error\n");
     } else {
-        fprintf(stderr, "%s\n", meminfo);
+        if(fscantf())
+        fprintf(stderr, "%s\n", stat);
     }
-    fclose(mem_fp);
+    fclose(fp);
+
 }
 
 int main(int argc, char *argv[]) {
@@ -81,11 +89,12 @@ int main(int argc, char *argv[]) {
     } else if (argc == 1) {
         // use 42, the answer to life the universe and everything, as default
         seed = "42";
-    } else if (argc == 3) {
-        if (argv[2] == "2>log"){
-            monitor_flag = 1;
-        }
-    } else {
+    } //else if (argc == 3) {
+//        if (strcmp(argv[2], "2>log") == 0){
+//            monitor_flag = 1;
+//        }
+//    } 
+    else {
         fprintf(stderr, "Usage: ./main <seed>\n");
         fprintf(stderr, "Note:  default seed is 42\n");
         exit(1);
@@ -159,10 +168,7 @@ int main(int argc, char *argv[]) {
             while(!SIGUSR2_flag){
                 usleep(300000);// sleep for 300 ms
                 // Monitor the /proc file system only when 2>log
-                if(monitor_flag == 1){
-                    CPU_Monitor();
-                    MEM_Monitor(path);
-                }
+                Monitor(path);
             }
             // reset the SIGUSR2 flag
             SIGUSR2_flag = 0;
@@ -174,8 +180,5 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Child process exited, with exit status: %d\n", WEXITSTATUS(status));
         close(pfd[WRITE_END]);
     }
-    
-
-
     return EXIT_SUCCESS;
 }
