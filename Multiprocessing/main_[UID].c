@@ -21,8 +21,8 @@
 #define SYSCALL_FLAG   0    // flags used in syscall, set it to default 0
 
 // Define Global Variable, Additional Header, and Functions Here
-#include <errno.h>
 #include <sys/resource.h>
+#include <time.h>
 
 // install signal handler here
 int SIGUSR2_flag = SYSCALL_FLAG; // child is not done inferencing
@@ -37,23 +37,22 @@ void handle_SIGINT(int signum){
     exit(130);
 }
 
-// Monitor Should be only done when ./main 42 2>log is called
-
 // file path for /proc/pid/meminfo
 char path[256]; 
-// CPU usage and Memory usage of child process
-char stat[2048];
 
 struct stat {
     int pid;
     char tcomm[256];
     char state;
-    unsigned long utime;
-    unsigned long stime;
+    unsigned long current_utime;
+    unsigned long current_stime;
+    unsigned long last_utime;
+    unsigned long last_stime;
+    double last_tstamp_s;
     long nice;
     unsigned long vsize;
     int processor;
-    unsigned int policy;
+    unsigned int policy;    
 };
 // Monitor item: 
 /*
@@ -67,20 +66,59 @@ task_cpu - processor: 39 %d
 utime: 14 %lu
 stime: 15 %lu
 */
-void Monitor(char path[]){
+
+static inline double now_monotonic_s(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+}
+
+int Monitor(char path[], struct stat *out){
     FILE *fp = fopen(path, "r");
     if (!fp){
         fprintf(stderr, "Opening /proc/{pid}/stat Failed\n");
     }
-    if(fgets(stat, sizeof(stat), fp) == NULL){
-        fprintf(stderr, "Reading Memory usage Error\n");
-    } else {
-        if(fscantf())
-        fprintf(stderr, "%s\n", stat);
+    if (fscanf(fp, "%d (%255[^)]) %c",
+               &out->pid, out->tcomm, &out->state) != 3) {
+        fprintf(stderr, "parse header failed for %s\n", path);
+        fclose(fp);
+        return -1;
+    }
+    // 2) Scan only the desired tail fields, skipping others with %*
+    if (fscanf(fp,
+        // 4..8  ppid pgrp session tty_nr tpgid
+        " %*d %*d %*d %*d %*d"
+        // 9..13 flags minflt cminflt majflt cmajflt
+        " %*u %*u %*u %*u %*u"
+        // 14..15 utime stime
+        " %lu %lu"
+        // 16..19 cutime cstime priority nice
+        " %*d %*d %*d %ld"
+        // 20..22 num_threads itrealvalue starttime
+        " %*d %*d %*u"
+        // 23..24 vsize rss
+        " %lu %*d"
+        // 25..31 rsslim startcode endcode startstack kstkesp kstkeip signal
+        " %*u %*u %*u %*u %*u %*u %*u"
+        // 32..34 blocked sigignore sigcatch
+        " %*u %*u %*u"
+        // 35..37 wchan nswap cnswap
+        " %*u %*u %*u"
+        // 38 exit_signal
+        " %*d"
+        // 39..41 processor rt_priority policy
+        " %d %*u %u",
+        &out->current_utime, &out->current_stime, &out->nice,
+        &out->vsize, &out->processor, &out->policy) != 6) {
+        fprintf(stderr, "parse tail failed for %s\n", path);
+        fclose(fp);
+        return -1;
     }
     fclose(fp);
-
+    return 0;
 }
+
+struct stat s;
 
 int main(int argc, char *argv[]) {
     char* seed; 
@@ -136,8 +174,8 @@ int main(int argc, char *argv[]) {
             return 3;}
     } 
     // main process: 
-    // get user prompt -> pass to inference process
-    // -> wait until the inference process finish inferencing & access to /proc to retrieve cpu usage information
+    // get user prompt . pass to inference process
+    // . wait until the inference process finish inferencing & access to /proc to retrieve cpu usage information
     else { 
         // in the main process, accept user input
         // sleep(3);
@@ -164,11 +202,19 @@ int main(int argc, char *argv[]) {
             // Monitoring status of inference process
             
             sprintf(path, "/proc/%d/stat", pid);
-            
             while(!SIGUSR2_flag){
                 usleep(300000);// sleep for 300 ms
                 // Monitor the /proc file system only when 2>log
-                Monitor(path);
+                if (Monitor(path, &s) == 0){
+                    double t_now = now_monotonic_s();
+                    double dt = t_now - s.last_tstamp_s;
+                    if (dt <= 0) dt = 1e-9; // guard tiny/zero interval
+
+                    double cpu_pct = ((s.current_utime - s.last_utime) + (s.current_stime - s.last_stime)) / dt * 100;
+                    s.last_utime = s.current_utime; s.last_stime = s.current_stime;
+                    fprintf(stderr, "[pid] %d [tcomm] %s [state] %c [policy] %u [nice] %ld [vsize] %lu [task_cpu] %d [utime] %lu [stime] %lu [cpu%%] %.2f\n", 
+                    s.pid, s.tcomm, s.state, s.policy, s.nice, s.vsize, s.processor, s.current_utime, s.current_stime, cpu_pct);
+                };
             }
             // reset the SIGUSR2 flag
             SIGUSR2_flag = 0;
