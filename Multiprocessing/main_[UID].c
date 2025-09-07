@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
 
                     double cpu_pct = ((s.current_utime - s.last_utime) + (s.current_stime - s.last_stime)) / dt * 100;
                     s.last_utime = s.current_utime; s.last_stime = s.current_stime;
-                    fprintf(stderr, "[pid] %d [tcomm] %s [state] %c [policy] %u [nice] %ld [vsize] %lu [task_cpu] %d [utime] %lu [stime] %lu [cpu%%] %.2f\n", 
+                    fprintf(stderr, "[pid] %d [tcomm] %s [state] %c [policy] %u [nice] %ld [vsize] %lu [task_cpu] %d [utime] %lu [stime] %lu [cpu%%] %.3f%%\n", 
                     s.pid, s.tcomm, s.state, s.policy, s.nice, s.vsize, s.processor, s.current_utime, s.current_stime, cpu_pct);
                 };
             }

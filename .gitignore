@@ -1,3 +1,5 @@
 # model and tokenizer file
 
 *.bin
+# log file
+*.txt
