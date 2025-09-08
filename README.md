@@ -1,20 +1,22 @@
 # LLM
 
-#### This repository is to optimize LLM interface and performance using Multi-processing and Multi-threading in C Language.
-
-#### Later on, Research in LLM in Python will be added.
-
-#### Obejective
-
-    To have hands-on practice in designing and developing a chatbot program, which involves the creation, management and coordination of processes.
+#### This repository is to Optimize LLM performance using Multi-processing and Multi-threading in C Language.
 
 ## Multi-Processing
 
-#### Llama3, an open-source variation of GPT, and complete single-thread LLM inference engine as the startpoint is provided.
+### Obejective
+
+        Optimization of Performance of LLM using Multiprocessing - Divide User Prompt Acception and Inference
+
+### Model Description
+
+##### The LLM used is based on SmolLM by HuggingfaceTB.
+
+##### Llama3, an open-source variation of GPT, and complete single-thread LLM inference engine as the startpoint is provided.
 
 ##### the inference framework used is based on the open-source project llama2.c by Andrej Karpathy.
 
-##### the LLM used is based on SmolLM by HuggingfaceTB.
+### How it works
 
 ##### Please download the model and tokenizer to the same folder:
 
@@ -25,7 +27,7 @@
 
 ##### Compile it with Level-3 Optimization and link math library (-lm, Linux built-in)
 
-        $ gcc -o inference inference_[UID].c -O3 -lm
+        $ gcc -o inference inference.c -O3 -lm
         or with Makefile (recommended)
         $ make -B inference
 
@@ -33,12 +35,16 @@
 
     make -B inference # -B:= make, force rebuild
     # or  manually
-    gcc -o inference inference_[UID].c -o3 -lm
+    gcc -o inference inference.c -o3 -lm
 
 #### Please use -lm flag to link math library and -o3 flag to apply the best optimization allowed within C standard.
 
-    ./inference <seed> "<prompt>" "<prompt>" # prompt must quoted with ""
-    # examples
-    ./inference 42 "What is Fibonacci number?"
+    ./main <seed> 2>log.txt
+    # Put your prompt when >>> appears
+    # While Inferencing, log.txt file will be generated
+    # In the log.txt, there are
+    # "[pid] [tcomm] [state] [policy] [nice] [vsize] [task_cpu] [utime] [stime] [cpu%] "
 
 ## Multi-Threading
+
+### To Be Updated

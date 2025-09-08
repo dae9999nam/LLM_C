@@ -1,8 +1,6 @@
 # A Minimalistic Makefile
 .PHONY: all
 
-# rename with your uid, make sure no space after your uid
-UID = [UID]
 
 # Default target
 all: prepare inference main
@@ -17,10 +15,10 @@ prepare:
 	fi
 
 inference:
-	gcc -o inference inference_$(UID).c -O3 -lm
+	gcc -o inference inference.c -O3 -lm
 
 main:
-	gcc -o main main_$(UID).c
+	gcc -o main main.c
 
 # Clean target to remove the downloaded file
 clean:
