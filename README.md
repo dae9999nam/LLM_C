@@ -16,17 +16,17 @@ Multiprocessing
 └── avg_cpu_use.py # Utility to parse the log and calculate average cpu usage
 ```
 
-### Obejective
+### Objective
 
     Optimization of Performance of LLM using Multiprocessing - Divide User Prompt Acception and Inference
 
 ### Model Description
 
-##### The LLM used is based on SmolLM by HuggingfaceTB.
+- The LLM used is based on SmolLM by HuggingfaceTB.
 
-##### Llama3, an open-source variation of GPT, and complete single-thread LLM inference engine as the startpoint is provided.
+- Llama3, an open-source variation of GPT, and complete single-thread LLM inference engine as the startpoint is provided.
 
-##### the inference framework used is based on the open-source project llama2.c by Andrej Karpathy.
+- Inference framework used is based on the open-source project llama2.c by Andrej Karpathy.
 
 ### How it works
 
@@ -43,7 +43,7 @@ Multiprocessing
         or with Makefile (recommended)
         $ make -B inference
 
-### Compile and run the inference program.
+#### Compile and run the inference program.
 
     make -B inference # -B:= make, force rebuild
     # or  manually
@@ -70,6 +70,8 @@ Multiprocessing
 | task_cpu | CPI id of the process scheduled to                         |
 | utime    | Running time of process spent in user mode, unit is 10ms   |
 | stime    | Running time of process spent in system mode, unti is 10ms |
+
+> please check [/proc/pid/stat manpage](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html) for more information
 
 ## Multi-Threading
 

@@ -117,8 +117,10 @@ int Monitor(char path[], struct stat *out){
     fclose(fp);
     return 0;
 }
+
 // Function using SYS_sched_setattr syscll to set the scheduling policy and related scheduling parameters for the inference child process
 void 
+
 struct stat s;
 
 int main(int argc, char *argv[]) {
