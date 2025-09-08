@@ -6,6 +6,7 @@
 
 ### File Structure
 
+```bash
 Multiprocessing
 ├── common.h # common and helper macro defns, read through first
 ├── main.c
@@ -13,6 +14,7 @@ Multiprocessing
 ├── Makefile # makefile for the project
 ├── model.h # GPT model definition, modification not allowed
 └── avg_cpu_use.py # Utility to parse the log and calculate average cpu usage
+```
 
 ### Obejective
 
