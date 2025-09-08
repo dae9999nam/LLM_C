@@ -4,9 +4,19 @@
 
 ## Multi-Processing
 
+### File Structure
+
+Multiprocessing
+├── common.h # common and helper macro defns, read through first
+├── main.c
+├── inference.c # [your task] template for inference child process implementation
+├── Makefile # makefile for the project
+├── model.h # GPT model definition, modification not allowed
+└── avg_cpu_use.py # Utility to parse the log and calculate average cpu usage
+
 ### Obejective
 
-        Optimization of Performance of LLM using Multiprocessing - Divide User Prompt Acception and Inference
+    Optimization of Performance of LLM using Multiprocessing - Divide User Prompt Acception and Inference
 
 ### Model Description
 
@@ -41,9 +51,23 @@
 
     ./main <seed> 2>log.txt
     # Put your prompt when >>> appears
-    # While Inferencing, log.txt file will be generated
-    # In the log.txt, there are
-    # "[pid] [tcomm] [state] [policy] [nice] [vsize] [task_cpu] [utime] [stime] [cpu%] "
+
+#### Main process collects the running status of inference process.
+
+#### All information about the statistics of a process are found using /proc/{pid}/stat and saved in log.txt
+
+#### Informations are as follow:
+
+| Item     | Description                                                |
+| -------- | ---------------------------------------------------------- |
+| pid      | Process ID                                                 |
+| state    | Running Status                                             |
+| Policy   | Scheduling Policy                                          |
+| nice     | Nice value                                                 |
+| vsize    | Virtual Memory Size                                        |
+| task_cpu | CPI id of the process scheduled to                         |
+| utime    | Running time of process spent in user mode, unit is 10ms   |
+| stime    | Running time of process spent in system mode, unti is 10ms |
 
 ## Multi-Threading
 
