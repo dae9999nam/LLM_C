@@ -21,12 +21,12 @@
 #define SYSCALL_FLAG   0    // flags used in syscall, set it to default 0
 
 // Define Global Variable, Additional Header, and Functions Here
+#include <errno.h>
 #include <sys/resource.h>
 #include <time.h>
 
-// install signal handler here
 int SIGUSR2_flag = SYSCALL_FLAG; // child is not done inferencing
-// default handler for signal SIGINT
+
 void handle_SIGUSR2(int signum){
     // Update the SIGUSR2 flag
     SIGUSR2_flag = 1;
@@ -37,9 +37,7 @@ void handle_SIGINT(int signum){
     exit(130);
 }
 
-// file path for /proc/pid/meminfo
 char path[256]; 
-
 struct stat {
     int pid;
     char tcomm[256];
@@ -48,7 +46,7 @@ struct stat {
     unsigned long current_stime;
     unsigned long last_utime;
     unsigned long last_stime;
-    double last_tstamp_s;
+    unsigned long last_tstamp_s;
     long nice;
     unsigned long vsize;
     int processor;
@@ -66,13 +64,7 @@ task_cpu - processor: 39 %d
 utime: 14 %lu
 stime: 15 %lu
 */
-
-static inline double now_monotonic_s(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
-}
-
+struct stat s;
 int Monitor(char path[], struct stat *out){
     FILE *fp = fopen(path, "r");
     if (!fp){
@@ -119,9 +111,50 @@ int Monitor(char path[], struct stat *out){
 }
 
 // Function using SYS_sched_setattr syscll to set the scheduling policy and related scheduling parameters for the inference child process
-void 
+struct sched_attr attr; // from common.h
+int policy, niceval, rt_prio;
+// Read current policy, nice, and RT priority via raw syscall
+int get_policy_nice_raw(pid_t pid, int *policy, int *niceval, int *rt_prio) {
+    struct sched_attr a;
+    memset(&a, 0, sizeof a);
+    a.size = sizeof a;
 
-struct stat s;
+    long rc = syscall(SYS_sched_getattr, pid, &a, sizeof a, 0u);
+    if (rc < 0) return -1;
+
+    if (policy)  *policy  = (int)a.sched_policy;
+    if (niceval) *niceval = (int)a.sched_nice;        // meaningful for OTHER/BATCH/IDLE
+    if (rt_prio) *rt_prio = (int)a.sched_priority;    // meaningful for FIFO/RR
+    printf("[Scheduling Policy, Nice value, Priority]\n");
+    printf("[pid] %d, [policy] %s [nice] %d [priority] %d\n", pid, get_sched_name(policy), niceval, rt_prio);
+    return 0;
+}
+
+// Set policy + nice (or RT priority) for a target pid via raw syscall
+// policy: SCHED_OTHER/BATCH/IDLE/FIFO/RR
+// rt_prio: 1..99 for FIFO/RR (ignored for OTHER/BATCH/IDLE)
+// niceval: -20..19 for time-sharing policies (ignored by RT policies)
+int set_policy_nice_raw(pid_t pid, int policy, int niceval, int rt_prio) {
+    struct sched_attr a;
+    memset(&a, 0, sizeof a);
+    a.size         = sizeof a;
+    a.sched_policy = policy;
+
+    if (policy == SCHED_FIFO || policy == SCHED_RR) {
+        if (rt_prio < 1 || rt_prio > 99) { errno = EINVAL; return -1; }
+        a.sched_priority = (unsigned)rt_prio;   // needs CAP_SYS_NICE
+        a.sched_nice     = niceval;             // harmless but ignored by RT
+    } else {
+        if (niceval < -20 || niceval > 19) { errno = EINVAL; return -1; }
+        a.sched_nice = niceval;                 // used by OTHER/BATCH/IDLE
+    }
+    // Third argument (flags) usually 0. Leave a.sched_flags=0 unless you specifically need
+    // SCHED_FLAG_RESET_ON_FORK in attr.sched_flags for children.
+    long rc = syscall(SYS_sched_setattr, pid, &a, 0u);
+    if (rc < 0) return -1;
+
+    return 0;
+}
 
 int main(int argc, char *argv[]) {
     char* seed; 
@@ -130,23 +163,19 @@ int main(int argc, char *argv[]) {
     } else if (argc == 1) {
         // use 42, the answer to life the universe and everything, as default
         seed = "42";
-    } //else if (argc == 3) {
-//        if (strcmp(argv[2], "2>log") == 0){
-//            monitor_flag = 1;
-//        }
-//    } 
+    } 
     else {
         fprintf(stderr, "Usage: ./main <seed>\n");
         fprintf(stderr, "Note:  default seed is 42\n");
         exit(1);
     }
-    // Write your main logic here
+
     int pid;
     int pfd[2]; // pipe file descriptor
     if (pipe(pfd) == -1){
         fprintf(stderr, "Pipe Error");
         return 2;
-    } // else {fprintf(stderr, "Pipe Created Successfully\n");}
+    } 
 
     // install signal handler for SIGUSR2 and SIGINT
     struct sigaction SIGUSR2_handler, SIGINT_handler;
@@ -163,30 +192,27 @@ int main(int argc, char *argv[]) {
     sigaction(SIGUSR2, &SIGUSR2_handler, NULL);
     sigaction(SIGINT, &SIGINT_handler, NULL);
 
-    // use fork to create child process 
     pid = fork();
     if (pid == 0){
         close(pfd[WRITE_END]); // close the write end for child process
-
         if (dup2(pfd[READ_END], STDIN_FILENO) == -1){ // set pipe read end to stdin
             perror("dup2 failed");
-            return 2;} // else {fprintf(stderr, "Child process dup2\n");}
+            return 2;} 
         close(pfd[READ_END]); // close the read end for child process
         if (execl("./inference", "inference", seed, (char *)NULL) == -1){ // use execl to run inference_[UID].c for child process 
             perror("execlp failed");
             return 3;}
     } 
-    // main process: 
-    // get user prompt . pass to inference process
-    // . wait until the inference process finish inferencing & access to /proc to retrieve cpu usage information
     else { 
-        // in the main process, accept user input
-        // sleep(3);
         char buf[MAX_PROMPT_LEN];
         int status;
         pid_t w;
         close(pfd[READ_END]); // close read end for main process
-        // accept the user prompt up to 4 or until the SIGINT is received
+        // set scheduling policy and niceval 
+        get_policy_nice_raw(pid, policy, niceval, rt_prio);
+        printf("Please enter policy, nice, priority respectively: ");
+        scanf("%d %d %d", policy, niceval, rt_prio);
+        set_policy_nice_raw(pid, policy, niceval, rt_prio);
         for(int i = 0; i < 4; i++){ // run until SIGINT not received or num_prompt < 4
             printf(">>> ");
             fflush(stdout);
@@ -200,23 +226,20 @@ int main(int argc, char *argv[]) {
                 return 5;
             }
             kill(pid, SIGUSR1); // send SIGUSR1 to child process to notice the user prompt is ready
-            // while the child process is inferencing
-            
-            // Monitoring status of inference process
-            
+            // Monitoring status of inference process        
             sprintf(path, "/proc/%d/stat", pid);
             while(!SIGUSR2_flag){
                 usleep(300000);// sleep for 300 ms
-                // Monitor the /proc file system only when 2>log
                 if (Monitor(path, &s) == 0){
-                    double t_now = now_monotonic_s();
+                    double t_now = time_in_ms();
                     double dt = t_now - s.last_tstamp_s;
+                    s.last_tstamp_s = t_now;
                     if (dt <= 0) dt = 1e-9; // guard tiny/zero interval
-
                     double cpu_pct = ((s.current_utime - s.last_utime) + (s.current_stime - s.last_stime)) / dt * 100;
-                    s.last_utime = s.current_utime; s.last_stime = s.current_stime;
-                    fprintf(stderr, "[pid] %d [tcomm] %s [state] %c [policy] %u [nice] %ld [vsize] %lu [task_cpu] %d [utime] %lu [stime] %lu [cpu%%] %.3f%%\n", 
-                    s.pid, s.tcomm, s.state, s.policy, s.nice, s.vsize, s.processor, s.current_utime, s.current_stime, cpu_pct);
+                    s.last_utime = s.current_utime; 
+                    s.last_stime = s.current_stime;
+                    fprintf(stderr, "[pid] %d [tcomm] %s [state] %c [policy] %s [nice] %ld [vsize] %lu [task_cpu] %d [utime] %lu [stime] %lu [cpu%%] %.3f%%\n", 
+                    s.pid, s.tcomm, s.state, get_sched_name(s.policy), s.nice, s.vsize, s.processor, s.current_utime, s.current_stime, cpu_pct);
                 };
             }
             // reset the SIGUSR2 flag
@@ -226,7 +249,7 @@ int main(int argc, char *argv[]) {
         if(w == -1){
             fprintf(stderr, "Waitpid Error\n");
         }
-        fprintf(stderr, "Child process exited, with exit status: %d\n", WEXITSTATUS(status));
+        printf("Child process exited, with exit status: %d\n", WEXITSTATUS(status));
         close(pfd[WRITE_END]);
     }
     return EXIT_SUCCESS;

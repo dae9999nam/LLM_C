@@ -3,3 +3,5 @@
 *.bin
 # log file
 *.txt
+# executable files
+exec/

@@ -39,8 +39,8 @@ struct sched_attr {
     unsigned int sched_util_max;
 };
 
-/**
-Get Schduler Name by revert the original macro definition:
+
+//Get Scheduler Name by revert the original macro definition:
 #define SCHED_OTHER		0
 #define SCHED_FIFO		1
 #define SCHED_RR		2
@@ -48,9 +48,9 @@ Get Schduler Name by revert the original macro definition:
 #define SCHED_ISO		4
 #define SCHED_IDLE		5
 #define SCHED_DEADLINE  6
-use it like get_sched_name(attr.sched_policy)
-@note you don't need to free the const char* returned
- */
+//use it like get_sched_name(attr.sched_policy)
+//@note you don't need to free the const char* returned
+
 const char* get_sched_name(int policy) {
     switch (policy) {
         case SCHED_OTHER:     return "SCHED_OTHER";

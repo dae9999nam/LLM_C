@@ -1,4 +1,4 @@
-# LLM
+# LLM - Large Language Model
 
 #### This repository is to Optimize LLM performance using Multi-processing and Multi-threading in C Language.
 
@@ -51,7 +51,7 @@ Multiprocessing
 
 #### Please use -lm flag to link math library and -o3 flag to apply the best optimization allowed within C standard.
 
-    ./main <seed> 2>log.txt
+    ./main <seed> 2>log
     # Put your prompt when >>> appears
 
 #### Main process collects the running status of inference process.
@@ -63,6 +63,7 @@ Multiprocessing
 | Item     | Description                                                |
 | -------- | ---------------------------------------------------------- |
 | pid      | Process ID                                                 |
+| tcomm    | Executable Name                                            |
 | state    | Running Status                                             |
 | Policy   | Scheduling Policy                                          |
 | nice     | Nice value                                                 |
