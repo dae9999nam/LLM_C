@@ -1,10 +1,3 @@
-/*
-* FILE NAME: 
-* NAME: BAEK SEUNGHEYON
-* Development Platform: Visual Studio Code & Docker
-* How to compile separately: (gcc -o main main_[UID].c)
-*/
-
 #include "common.h"  // common definitions
 
 #include <stdio.h>   // for printf, fgets, scanf, perror
@@ -21,7 +14,6 @@
 #define SYSCALL_FLAG   0    // flags used in syscall, set it to default 0
 
 // Define Global Variable, Additional Header, and Functions Here
-#include <errno.h>
 #include <sys/resource.h>
 #include <time.h>
 
@@ -126,7 +118,7 @@ int get_policy_nice_raw(pid_t pid, int *policy, int *niceval, int *rt_prio) {
     if (niceval) *niceval = (int)a.sched_nice;        // meaningful for OTHER/BATCH/IDLE
     if (rt_prio) *rt_prio = (int)a.sched_priority;    // meaningful for FIFO/RR
     printf("[Scheduling Policy, Nice value, Priority]\n");
-    printf("[pid] %d, [policy] %s [nice] %d [priority] %d\n", pid, get_sched_name(policy), niceval, rt_prio);
+    printf("[pid] %d, [policy] %s [nice] %d [priority] %u\n", pid, get_sched_name((int)a.sched_policy), (int)a.sched_nice, (unsigned)a.sched_priority);
     return 0;
 }
 
@@ -141,18 +133,18 @@ int set_policy_nice_raw(pid_t pid, int policy, int niceval, int rt_prio) {
     a.sched_policy = policy;
 
     if (policy == SCHED_FIFO || policy == SCHED_RR) {
-        if (rt_prio < 1 || rt_prio > 99) { errno = EINVAL; return -1; }
+        if (rt_prio < 1 || rt_prio > 99) { printf("Invalid Priority Value\n"); return -1; }
         a.sched_priority = (unsigned)rt_prio;   // needs CAP_SYS_NICE
         a.sched_nice     = niceval;             // harmless but ignored by RT
     } else {
-        if (niceval < -20 || niceval > 19) { errno = EINVAL; return -1; }
+        if (niceval < -20 || niceval > 19) { printf("Invalid Nice Value\n"); return -1; }
         a.sched_nice = niceval;                 // used by OTHER/BATCH/IDLE
     }
     // Third argument (flags) usually 0. Leave a.sched_flags=0 unless you specifically need
     // SCHED_FLAG_RESET_ON_FORK in attr.sched_flags for children.
     long rc = syscall(SYS_sched_setattr, pid, &a, 0u);
     if (rc < 0) return -1;
-
+    printf("Policy, Nice value and Priority has been updated.\n");
     return 0;
 }
 
@@ -209,9 +201,12 @@ int main(int argc, char *argv[]) {
         pid_t w;
         close(pfd[READ_END]); // close read end for main process
         // set scheduling policy and niceval 
-        get_policy_nice_raw(pid, policy, niceval, rt_prio);
+        get_policy_nice_raw(pid, &policy, &niceval, &rt_prio);
         printf("Please enter policy, nice, priority respectively: ");
-        scanf("%d %d %d", policy, niceval, rt_prio);
+        scanf("%d %d %d", &policy, &niceval, &rt_prio);
+        /* consume everything up to and including the newline */
+        int ch;
+        while ((ch = getchar()) != '\n' && ch != EOF) { /* nothing */ }
         set_policy_nice_raw(pid, policy, niceval, rt_prio);
         for(int i = 0; i < 4; i++){ // run until SIGINT not received or num_prompt < 4
             printf(">>> ");
