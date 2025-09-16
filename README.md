@@ -32,27 +32,37 @@ Multiprocessing
 
 ##### Please download the model and tokenizer to the same folder:
 
-        $ wget -O model.bin https://huggingface.co/huangs0/llama2.c/resolve/main/model.bin
-        $ wget -O tokenizer.bin https://huggingface.co/huangs0/llama2.c/resolve/main/tokenizer.bin
-        or with Makefile (recommended)
-        $ make prepare
+```bash
+$ wget -O model.bin https://huggingface.co/huangs0/llama2.c/resolve/main/model.bin
+$ wget -O tokenizer.bin https://huggingface.co/huangs0/llama2.c/resolve/main/tokenizer.bin
+or with Makefile (recommended)
+$ make prepare
+```
 
 ##### Compile it with Level-3 Optimization and link math library (-lm, Linux built-in)
 
-        $ gcc -o inference inference.c -O3 -lm
-        or with Makefile (recommended)
-        $ make -B inference
+```bash
+$ gcc -o inference inference.c -O3 -lm
+or with Makefile (recommended)
+$ make -B inference
+
+```
 
 #### Compile and run the inference program.
 
-    make -B inference # -B:= make, force rebuild
-    # or  manually
-    gcc -o inference inference.c -o3 -lm
+```bash
+$ make -B inference # -B:= make, force rebuild
+# or  manually
+$ gcc -o inference inference.c -o3 -lm
+```
 
 #### Please use -lm flag to link math library and -o3 flag to apply the best optimization allowed within C standard.
 
-    ./main <seed> 2>log
-    # Put your prompt when >>> appears
+```bash
+$ ./main <seed> 2>log
+# Put your prompt when >>> appears
+
+```
 
 #### Main process collects the running status of inference process.
 
@@ -72,7 +82,24 @@ Multiprocessing
 | utime    | Running time of process spent in user mode, unit is 10ms   |
 | stime    | Running time of process spent in system mode, unti is 10ms |
 
-> please check [/proc/pid/stat manpage](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html) for more information
+> please check [/proc/pid/stat manpage](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html) for more information.
+
+### Scheduling Polciy, Nice, Priority Setting
+
+#### Before the first generation, main process set the scheduling polciy and nice value of the inference process using `SYS_sched_settattr`
+
+- Normal Policies:
+  - SCHED_OTHER: default scheduling policies of Linux. Also named SCHED_NORMAL
+  - SCHED_BATCH: for non-interactive cpu-intensive workload.
+  - SCHED:IDLE: for low priority background task
+- REAL-time Policies:
+  - SCHED_FIFO: First-In-First-Out Policy with Preemption
+  - SCHED_RR: Round-Robin Polciy
+  - SCHED_DEADLINE: Earliest Deadline First with Preemption
+
+#### For Normal Policies, thier scheduling prioruty is congifured via nice value, an integer between -20 (highest) and +19 (lowest) with 0 as the default priority
+
+> Please check [SYS_shced_setattr manpage](https://man7.org/linux/man-pages/man2/sched_setattr.2.html) for more information.
 
 ## Multi-Threading
 
