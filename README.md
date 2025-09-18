@@ -75,18 +75,18 @@ $ ./main <seed> 2>log
 | pid      | Process ID                                                 |
 | tcomm    | Executable Name                                            |
 | state    | Running Status                                             |
-| Policy   | Scheduling Policy                                          |
+| policy   | Scheduling Policy                                          |
 | nice     | Nice value                                                 |
 | vsize    | Virtual Memory Size                                        |
-| task_cpu | CPI id of the process scheduled to                         |
+| task_cpu | CPU id of the process scheduled to                         |
 | utime    | Running time of process spent in user mode, unit is 10ms   |
-| stime    | Running time of process spent in system mode, unti is 10ms |
+| stime    | Running time of process spent in system mode, unit is 10ms |
 
 > please check [/proc/pid/stat manpage](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html) for more information.
 
 ### 1.5 Scheduling Polciy, Nice, Priority Setting
 
-#### Before the first generation, main process set the scheduling polciy and nice value of the inference process using `SYS_sched_settattr`
+#### Before the first generation, main process set the scheduling policy and nice value of the inference process using `SYS_sched_settattr`
 
 - Normal Policies:
   - SCHED_OTHER: default scheduling policies of Linux. Also named SCHED_NORMAL
@@ -107,7 +107,7 @@ $ ./main <seed> 2>log
 
 #### Thus to accelerate GPT and get a faster response, it is critical to have faster matrix-vector-multiplication and faster multi-head attention computation.
 
-### 2.1 Prapare Environment
+### 2.1 Prepare Environment
 
 #### Download model files
 
