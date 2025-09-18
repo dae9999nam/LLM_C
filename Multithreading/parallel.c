@@ -1,10 +1,4 @@
 /*
-* PLEASE WRITE DOWN FOLLOWING INFO BEFORE SUBMISSION
-* FILE NAME: 
-* NAME: 
-* UID:  
-* Development Platform: 
-* Remark: (How much you implemented?)
 * How to compile separately: (gcc -o parallel parallel_[UID].c -O2 -lm -lpthread)
 */
 
@@ -46,14 +40,22 @@ void multi_head_attn_task_func(int id) {
 
 // thread function used in pthread_create
 // @note: YOU CAN NOT MODIFY this FUNCTION SIGNATURE!!!
-void *thr_func(void *arg) {
 
+void *thr_func(void *arg) {
+    int id = *(int *)arg;
+    printf("This is Thread %d\n", id);
+    pthread_exit(NULL);
 }
 
 // function to initialize thread pool
 // @note: YOU CAN NOT MODIFY this FUNCTION SIGNATURE!!!
 void init_thr_pool(int num_thr) {
-    
+    pthread_t *thrpool = malloc(sizeof(*thrpool) * num_thr);
+    int *id = malloc(sizeof(*id) * num_thr);
+    for(int i = 0; i < num_thr; i++){
+        id[i] = i; // per-thread arg
+        pthread_create(&thrpool[i], NULL, thr_func, &id[i]);
+    }
 }
 
 // function to close thread pool

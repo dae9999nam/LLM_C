@@ -1,9 +1,6 @@
 # A Minimalistic Makefile
 .PHONY: all
 
-# rename with your uid, make sure no space after your uid
-UID = [UID]
-
 # Default target
 all: prepare parallel
 
@@ -21,7 +18,7 @@ seq:
 	gcc -o seq seq.c -O2 -lm
 
 parallel:
-	gcc -o parallel parallel_$(UID).c -O2 -lm -lpthread
+	gcc -o parallel parallel.c -O2 -lm -lpthread
 
 # Clean target to remove the downloaded file
 clean:
