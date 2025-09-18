@@ -2,9 +2,9 @@
 
 #### This repository is to Optimize LLM performance using Multi-processing and Multi-threading in C Language.
 
-## Multi-Processing
+## 1. Multi-Processing
 
-### File Structure
+### 1.1 File Structure
 
 ```bash
 Multiprocessing
@@ -16,11 +16,11 @@ Multiprocessing
 └── avg_cpu_use.py # Utility to parse the log and calculate average cpu usage
 ```
 
-### Objective
+### 1.2 Objective
 
     Optimization of Performance of LLM using Multiprocessing - Divide User Prompt Acception and Inference
 
-### Model Description
+### 1.3 Model Description
 
 - The LLM used is based on SmolLM by HuggingfaceTB.
 
@@ -28,7 +28,7 @@ Multiprocessing
 
 - Inference framework used is based on the open-source project llama2.c by Andrej Karpathy.
 
-### How it works
+### 1.4 How it works
 
 ##### Please download the model and tokenizer to the same folder:
 
@@ -84,7 +84,7 @@ $ ./main <seed> 2>log
 
 > please check [/proc/pid/stat manpage](https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html) for more information.
 
-### Scheduling Polciy, Nice, Priority Setting
+### 1.5 Scheduling Polciy, Nice, Priority Setting
 
 #### Before the first generation, main process set the scheduling polciy and nice value of the inference process using `SYS_sched_settattr`
 
@@ -92,7 +92,7 @@ $ ./main <seed> 2>log
   - SCHED_OTHER: default scheduling policies of Linux. Also named SCHED_NORMAL
   - SCHED_BATCH: for non-interactive cpu-intensive workload.
   - SCHED:IDLE: for low priority background task
-- REAL-time Policies:
+- Real-time Policies:
   - SCHED_FIFO: First-In-First-Out Policy with Preemption
   - SCHED_RR: Round-Robin Polciy
   - SCHED_DEADLINE: Earliest Deadline First with Preemption
@@ -101,6 +101,29 @@ $ ./main <seed> 2>log
 
 > Please check [SYS_shced_setattr manpage](https://man7.org/linux/man-pages/man2/sched_setattr.2.html) for more information.
 
-## Multi-Threading
+## 2. Multi-Threading
+
+#### GPT leverages multi-head attention, a mechanism to adopt important information from history tokens.
+
+#### Thus to accelerate GPT and get a faster response, it is critical to have faster matrix-vector-multiplication and faster multi-head attention computation.
+
+### 2.1 Prapare Environment
+
+#### Download model files
+
+```bash
+$ make prepare # will download if not existed
+# or manually download via wget, will force repeated download, not recommended
+$ wget -O model.bin https://huggingface.co/huangs0/smollm/resolve/main/model.bin
+$ wget -O tokenizer.bin https://huggingface.co/huangs0/smollm/resolve/main/tokenizer.bin
+```
+
+#### Compile and run the inference program
+
+```bash
+$ make -B
+ # or manually via gcc
+$ gcc -o parallel parallel.c -O2 -lm -lpthread
+```
 
 ### To Be Updated
