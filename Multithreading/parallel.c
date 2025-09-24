@@ -21,6 +21,9 @@ Sampler sampler;         // sampler instance to be init
 
 // YOUR CODE STARTS HERE
 #include <pthread.h>
+pthread_t *thrpool; // a global pointer to array of thread handles(identifiers)
+int thrpool_count =0;
+
 // #include <semaphore.h> // uncomment this line if you use semaphore
 // #include <stdbool.h>   // uncomment this line if you want true / false
 
@@ -50,8 +53,9 @@ void *thr_func(void *arg) {
 // function to initialize thread pool
 // @note: YOU CAN NOT MODIFY this FUNCTION SIGNATURE!!!
 void init_thr_pool(int num_thr) {
-    pthread_t *thrpool = malloc(sizeof(*thrpool) * num_thr);
-    int *id = malloc(sizeof(*id) * num_thr);
+    thrpool = malloc(sizeof(*thrpool) * num_thr);
+    thrpool_count = num_thr;
+    int *id = malloc(sizeof(*id) * num_thr);  
     for(int i = 0; i < num_thr; i++){
         id[i] = i; // per-thread arg
         pthread_create(&thrpool[i], NULL, thr_func, &id[i]);
@@ -61,7 +65,15 @@ void init_thr_pool(int num_thr) {
 // function to close thread pool
 // @note: YOU CAN NOT MODIFY this FUNCTION SIGNATURE!!!
 void close_thr_pool() {
-    
+    int *rptr;
+    for (int i=0; i <thrpool_count; i++){
+        pthread_join(thrpool[i], (void **) &rptr);
+        printf("Thread %d has terminated with a return value of %d\n", thrpool[i], *rptr);
+    }
+    printf("Program ended.\n");
+    free(thrpool);
+    thrpool = NULL;
+    thrpool_count = 0;
 }
 
 // ----------------------------------------------------------------------------
