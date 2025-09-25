@@ -21,13 +21,20 @@ Sampler sampler;         // sampler instance to be init
 
 // YOUR CODE STARTS HERE
 #include <pthread.h>
-pthread_t *thrpool; // a global pointer to array of thread handles(identifiers)
-int thrpool_count =0;
 
 // #include <semaphore.h> // uncomment this line if you use semaphore
 // #include <stdbool.h>   // uncomment this line if you want true / false
 
 // you may define global variables here
+pthread_t *thrpool; // a global pointer to array of thread handles(identifiers)
+int thrpool_count = 0;
+struct Range{
+    int up;
+    int down;
+};
+
+// use mutex and cond variable
+pthread_mutex_t m_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // function executed by each thread to complete mat_vec_mul
 // @note: please modify the signature to what you want
@@ -47,18 +54,26 @@ void multi_head_attn_task_func(int id) {
 void *thr_func(void *arg) {
     int id = *(int *)arg;
     printf("This is Thread %d\n", id);
+    // wait for synchronization after initialziation
+    // wake up by main thread to work on the assigned computation
+                                            
+    // after finishing the workload, inform the main thread and go back to wait
+    // terminate and collect its system usage
     pthread_exit(NULL);
 }
 
 // function to initialize thread pool
 // @note: YOU CAN NOT MODIFY this FUNCTION SIGNATURE!!!
 void init_thr_pool(int num_thr) {
+    int rc;
     thrpool = malloc(sizeof(*thrpool) * num_thr);
     thrpool_count = num_thr;
     int *id = malloc(sizeof(*id) * num_thr);  
     for(int i = 0; i < num_thr; i++){
         id[i] = i; // per-thread arg
-        pthread_create(&thrpool[i], NULL, thr_func, &id[i]);
+        if (rc = pthread_create(&thrpool[i], NULL, thr_func, &id[i])){
+            printf("Thread creation failed: %d\n", rc);
+        }
     }
 }
 
@@ -80,7 +95,8 @@ void close_thr_pool() {
 // entry function for multi-threading matrix multiplication
 // @note: YOU CAN NOT MODIFY this FUNCTION SIGNATURE!!!
 void mat_vec_mul(float* out, QuantizedTensor *vec, QuantizedTensor *mat, int col, int row) {
-    
+    // assign mat_vec_mul computation and parameters to thread
+    // wake up threads to do the calculation
 }
 
 // ----------------------------------------------------------------------------
@@ -97,7 +113,9 @@ void multi_head_attn(
     int head_size,
     int kv_dim,
     int kv_mul) {
-    
+    // assign multi_head_attn computation and parameters to threads
+    // wake up threads to do the calculation
+
 }
 // YOUR CODE ENDS HERE
 
