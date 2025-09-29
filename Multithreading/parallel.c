@@ -1,5 +1,5 @@
 /*
-* How to compile separately: (gcc -o parallel parallel_[UID].c -O2 -lm -lpthread)
+* How to compile separately: (gcc -o parallel parallel.c -O2 -lm -lpthread)
 */
 
 #include "common.h" // some common definitions
@@ -35,6 +35,7 @@ struct Range{
 
 // use mutex and cond variable
 pthread_mutex_t m_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
 
 // function executed by each thread to complete mat_vec_mul
 // @note: please modify the signature to what you want
@@ -55,8 +56,10 @@ void *thr_func(void *arg) {
     int id = *(int *)arg;
     printf("This is Thread %d\n", id);
     // wait for synchronization after initialziation
+    pthread_mutex_lock(&m_mutex);
     // wake up by main thread to work on the assigned computation
-                                            
+    pthread_cond_wait(&cond_var, &m_mutex);
+    pthread_mutex_unlock(&m_mutex);                    
     // after finishing the workload, inform the main thread and go back to wait
     // terminate and collect its system usage
     pthread_exit(NULL);
@@ -81,11 +84,13 @@ void init_thr_pool(int num_thr) {
 // @note: YOU CAN NOT MODIFY this FUNCTION SIGNATURE!!!
 void close_thr_pool() {
     int *rptr;
-    for (int i=0; i <thrpool_count; i++){
+    for (int i = 0; i < thrpool_count; i++){
         pthread_join(thrpool[i], (void **) &rptr);
         printf("Thread %d has terminated with a return value of %d\n", thrpool[i], *rptr);
     }
     printf("Program ended.\n");
+    pthread_mutex_destroy(&m_mutex);
+    pthread_cond_destroy(&cond_var);
     free(thrpool);
     thrpool = NULL;
     thrpool_count = 0;
