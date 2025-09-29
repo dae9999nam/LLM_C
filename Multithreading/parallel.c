@@ -57,8 +57,10 @@ void *thr_func(void *arg) {
     int id = *(int *)arg;
     printf("This is Thread %d\n", id);
     // wait for synchronization after initialziation
+    pthread_mutex_lock(&m_mutex);
     // wake up by main thread to work on the assigned computation
-                                            
+    pthread_cond_wait(&cond_var, &m_mutex);
+    pthread_mutex_unlock(&m_mutex);                             
     // after finishing the workload, inform the main thread and go back to wait
     // terminate and collect its system usage
     pthread_exit(NULL);
