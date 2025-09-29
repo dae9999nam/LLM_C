@@ -37,6 +37,7 @@ struct Range{
 pthread_mutex_t m_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
 
+
 // function executed by each thread to complete mat_vec_mul
 // @note: please modify the signature to what you want
 void mat_vec_mul_task_func(int id) {
@@ -56,10 +57,8 @@ void *thr_func(void *arg) {
     int id = *(int *)arg;
     printf("This is Thread %d\n", id);
     // wait for synchronization after initialziation
-    pthread_mutex_lock(&m_mutex);
     // wake up by main thread to work on the assigned computation
-    pthread_cond_wait(&cond_var, &m_mutex);
-    pthread_mutex_unlock(&m_mutex);                    
+                                            
     // after finishing the workload, inform the main thread and go back to wait
     // terminate and collect its system usage
     pthread_exit(NULL);
