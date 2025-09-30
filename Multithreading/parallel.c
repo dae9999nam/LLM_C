@@ -28,10 +28,13 @@ Sampler sampler;         // sampler instance to be init
 // you may define global variables here
 pthread_t *thrpool; // a global pointer to array of thread handles(identifiers)
 int thrpool_count = 0;
+int idx = 0;
 struct Range{
     int up;
     int down;
 };
+int mat_vec_sum = 0;
+int multi_head_sum = 0;
 
 // use mutex and cond variable
 pthread_mutex_t m_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -40,13 +43,26 @@ pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
 
 // function executed by each thread to complete mat_vec_mul
 // @note: please modify the signature to what you want
-void mat_vec_mul_task_func(int id) {
-
+void mat_vec_mul_task_func(int id, float* out, QuantizedTensor *vec, QuantizedTensor *mat, int col, int row) {
+    struct Range range;
+    if (id == idx){ // when the ith thread's turn
+        if(thrpool_count % )
+    }
 }
 
 // function executed by each thread to complete multi_head_attn
 // @note: please modify the signature to what you want
-void multi_head_attn_task_func(int id) {
+void multi_head_attn_task_func(int id,
+    float* out,         // output tensor [head, head_size]
+    float* q,           // query tensor  [head, head_size]
+    float* key_cache,   // cache of history key tensor   [kv_head, seq_len, head_size]
+    float* value_cache, // cache of history value tensor [kv_head, seq_len, head_size]
+    float* att,         // buffer for attention score [head, seq_len]
+    int seq_len,
+    int n_heads,
+    int head_size,
+    int kv_dim,
+    int kv_mul) {
 
 }
 
@@ -60,6 +76,7 @@ void *thr_func(void *arg) {
     pthread_mutex_lock(&m_mutex);
     // wake up by main thread to work on the assigned computation
     pthread_cond_wait(&cond_var, &m_mutex);
+    mat_vec_mul_task_func(id, out, vec, mat);
     pthread_mutex_unlock(&m_mutex);                             
     // after finishing the workload, inform the main thread and go back to wait
     // terminate and collect its system usage
@@ -102,7 +119,7 @@ void close_thr_pool() {
 // @note: YOU CAN NOT MODIFY this FUNCTION SIGNATURE!!!
 void mat_vec_mul(float* out, QuantizedTensor *vec, QuantizedTensor *mat, int col, int row) {
     // assign mat_vec_mul computation and parameters to thread
-    // wake up threads to do the calculation
+    
 }
 
 // ----------------------------------------------------------------------------
